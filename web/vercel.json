@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/vite.svg", "destination": "/vite.svg" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
