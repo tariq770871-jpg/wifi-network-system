@@ -1,17 +1,23 @@
 const { Pool } = require('pg');
-require('dotenv').config();
+const config = require('../config');
 
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionString: config.database.url,
+    ssl: config.database.ssl ? { rejectUnauthorized: false } : false,
+    max: config.database.pool.max,
+    idleTimeoutMillis: config.database.pool.idleTimeoutMillis,
+    connectionTimeoutMillis: config.database.pool.connectionTimeoutMillis,
 });
 
 pool.on('error', (err) => {
     console.error('Unexpected error on idle client', err);
     process.exit(-1);
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+    await pool.end();
+    process.exit(0);
 });
 
 module.exports = {

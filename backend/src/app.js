@@ -3,7 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
-require('dotenv').config();
+const swaggerUi = require('swagger-ui-express');
+const config = require('./shared/config');
 
 const errorHandler = require('./shared/middleware/errorHandler');
 
@@ -18,19 +19,30 @@ const { signalRoutes } = require('./modules/signal');
 const { networksRoutes } = require('./modules/networks');
 const { devicesRoutes } = require('./modules/devices');
 
+const specs = require('./shared/swagger');
+
 const app = express();
 
 // Security middleware
 app.use(helmet());
+
+// CORS - strict configuration (no wildcard fallback)
+if (config.cors.origins.length === 0) {
+    console.warn('[WARN] ALLOWED_ORIGINS is not set. CORS will reject all cross-origin requests.');
+    console.warn('[WARN] Set ALLOWED_ORIGINS in .env e.g.: ALLOWED_ORIGINS=http://localhost:5173');
+}
 app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
-    credentials: true
+    origin: config.cors.origins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // Rate limiting
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: { success: false, error: 'طلبات كثيرة جداً، حاول لاحقاً' },
 });
 app.use(limiter);
 
@@ -43,8 +55,14 @@ app.use(morgan('combined'));
 
 // Health check
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', timestamp: new Date().toISOString(), env: config.env });
 });
+
+// Swagger API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    swaggerOptions: { persistAuthorization: true },
+}));
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -59,17 +77,18 @@ app.use('/api/devices', devicesRoutes);
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({ error: 'المسار غير موجود' });
+    res.status(404).json({ success: false, error: 'المسار غير موجود' });
 });
 
 // Error handler
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
+const PORT = config.port;
 
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Environment: ${config.env}`);
+    console.log(`API Docs: http://localhost:${PORT}/api-docs`);
 });
 
 module.exports = app;

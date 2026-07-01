@@ -1,14 +1,18 @@
 const express = require('express');
 const router = express.Router();
+const ticketsController = require('./tickets.controller');
 const { authenticate, authorize } = require('../../shared/middleware/auth');
-const { getAll, getById, create, update, assign, complete, delete: deleteTicket } = require('./tickets.controller');
 
-router.get('/', authenticate, getAll);
-router.get('/:id', authenticate, getById);
-router.post('/', authenticate, authorize('admin', 'support'), create);
-router.put('/:id', authenticate, update);
-router.post('/:id/assign', authenticate, authorize('admin', 'support'), assign);
-router.post('/:id/complete', authenticate, authorize('technician'), complete);
-router.delete('/:id', authenticate, authorize('admin'), deleteTicket);
+// All routes require authentication
+router.use(authenticate);
+
+router.get('/', ticketsController.getAll);
+router.get('/:id', ticketsController.getById);
+router.post('/', authorize('admin', 'support'), ticketsController.create);
+router.put('/:id', ticketsController.update);
+router.delete('/:id', authorize('admin'), ticketsController.delete);
+router.post('/:id/assign', authorize('admin', 'support'), ticketsController.assign);
+router.post('/:id/start', authorize('technician'), ticketsController.start);
+router.post('/:id/complete', authorize('technician'), ticketsController.complete);
 
 module.exports = router;
