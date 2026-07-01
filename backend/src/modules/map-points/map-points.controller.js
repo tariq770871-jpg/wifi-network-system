@@ -1,115 +1,167 @@
-const { query } = require('../../shared/db');
+const MapPointsService = require('./map-points.service');
 const { success, error } = require('../../shared/utils/response');
 
+/**
+ * @swagger
+ * /api/map-points:
+ *   get:
+ *     tags: [Map Points]
+ *     summary: قائمة النقاط
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: status
+ *         in: query
+ *         schema: { type: string, enum: [pending, approved, rejected] }
+ *     responses:
+ *       200: { description: قائمة النقاط }
+ */
 const getAll = async (req, res) => {
     try {
-        const { status } = req.query;
-        let sql = `
-            SELECT mp.*, creator.full_name as creator_name, reviewer.full_name as reviewer_name
-            FROM map_points mp
-            LEFT JOIN users creator ON mp.created_by = creator.id
-            LEFT JOIN users reviewer ON mp.reviewed_by = reviewer.id
-            WHERE 1=1
-        `;
-        const params = [];
-
-        if (status) {
-            sql += ' AND mp.status = $1';
-            params.push(status);
-        }
-
-        sql += ' ORDER BY mp.created_at DESC';
-
-        const result = await query(sql, params);
-        success(res, result.rows);
+        const points = await MapPointsService.getAll(req.query);
+        success(res, points);
     } catch (err) {
-        error(res, err.message, 500);
+        error(res, err.message, err.statusCode || 500);
     }
 };
 
-const getById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const result = await query(`
-            SELECT mp.*, creator.full_name as creator_name, reviewer.full_name as reviewer_name
-            FROM map_points mp
-            LEFT JOIN users creator ON mp.created_by = creator.id
-            LEFT JOIN users reviewer ON mp.reviewed_by = reviewer.id
-            WHERE mp.id = $1
-        `, [id]);
-
-        if (result.rows.length === 0) {
-            return error(res, 'النقطة غير موجودة', 404);
-        }
-        success(res, result.rows[0]);
-    } catch (err) {
-        error(res, err.message, 500);
-    }
-};
-
-const create = async (req, res) => {
-    try {
-        const { name, note, location_lat, location_lng } = req.body;
-
-        if (!name || name.trim() === '') {
-            return error(res, 'الاسم إلزامي', 400);
-        }
-
-        const result = await query(
-            'INSERT INTO map_points (name, note, location_lat, location_lng, created_by, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [name, note, location_lat, location_lng, req.user.id, 'pending']
-        );
-
-        success(res, result.rows[0], 'تم إرسال الطلب بنجاح - بانتظار موافقة الإدارة');
-    } catch (err) {
-        error(res, err.message, 500);
-    }
-};
-
-const review = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { status } = req.body; // 'approved' or 'rejected'
-
-        if (!['approved', 'rejected'].includes(status)) {
-            return error(res, 'الحالة يجب أن تكون approved أو rejected', 400);
-        }
-
-        const result = await query(
-            'UPDATE map_points SET status = $1, reviewed_by = $2, reviewed_at = NOW() WHERE id = $3 RETURNING *',
-            [status, req.user.id, id]
-        );
-
-        if (result.rows.length === 0) {
-            return error(res, 'النقطة غير موجودة', 404);
-        }
-
-        const message = status === 'approved' ? 'تمت الموافقة على النقطة' : 'تم رفض النقطة';
-        success(res, result.rows[0], message);
-    } catch (err) {
-        error(res, err.message, 500);
-    }
-};
-
+/**
+ * @swagger
+ * /api/map-points/my-requests:
+ *   get:
+ *     tags: [Map Points]
+ *     summary: طلباتي
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: طلبات الفني }
+ */
 const getMyRequests = async (req, res) => {
     try {
-        const result = await query(
-            'SELECT * FROM map_points WHERE created_by = $1 ORDER BY created_at DESC',
-            [req.user.id]
-        );
-        success(res, result.rows);
+        const requests = await MapPointsService.getMyRequests(req.user.id);
+        success(res, requests);
     } catch (err) {
         error(res, err.message, 500);
     }
 };
 
+/**
+ * @swagger
+ * /api/map-points/{id}:
+ *   get:
+ *     tags: [Map Points]
+ *     summary: نقطة محددة
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: بيانات النقطة }
+ *       404: { description: غير موجودة }
+ */
+const getById = async (req, res) => {
+    try {
+        const point = await MapPointsService.getById(req.params.id);
+        success(res, point);
+    } catch (err) {
+        error(res, err.message, err.statusCode || 500);
+    }
+};
+
+/**
+ * @swagger
+ * /api/map-points:
+ *   post:
+ *     tags: [Map Points]
+ *     summary: إضافة نقطة جديدة
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, location_lat, location_lng]
+ *             properties:
+ *               name: { type: string, example: 'نقطة تغطية - حي النزهة' }
+ *               note: { type: string }
+ *               location_lat: { type: number }
+ *               location_lng: { type: number }
+ *     responses:
+ *       200: { description: تم إرسال الطلب }
+ *       400: { description: الاسم إلزامي }
+ */
+const create = async (req, res) => {
+    try {
+        const point = await MapPointsService.create(req.body, req.user.id);
+        success(res, point, 'تم إرسال الطلب بنجاح - بانتظار موافقة الإدارة');
+    } catch (err) {
+        error(res, err.message, err.statusCode || 500);
+    }
+};
+
+/**
+ * @swagger
+ * /api/map-points/{id}/review:
+ *   post:
+ *     tags: [Map Points]
+ *     summary: مراجعة نقطة (موافقة/رفض)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status: { type: string, enum: [approved, rejected] }
+ *     responses:
+ *       200: { description: تمت المراجعة }
+ *       404: { description: غير موجودة }
+ */
+const review = async (req, res) => {
+    try {
+        const point = await MapPointsService.review(req.params.id, req.body.status, req.user.id);
+        const message = req.body.status === 'approved' ? 'تمت الموافقة على النقطة' : 'تم رفض النقطة';
+        success(res, point, message);
+    } catch (err) {
+        error(res, err.message, err.statusCode || 500);
+    }
+};
+
+/**
+ * @swagger
+ * /api/map-points/{id}:
+ *   delete:
+ *     tags: [Map Points]
+ *     summary: حذف نقطة
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: تم الحذف }
+ */
 const deletePoint = async (req, res) => {
     try {
-        const { id } = req.params;
-        await query('DELETE FROM map_points WHERE id = $1', [id]);
+        await MapPointsService.delete(req.params.id);
         success(res, null, 'تم حذف النقطة');
     } catch (err) {
-        error(res, err.message, 500);
+        error(res, err.message, err.statusCode || 500);
     }
 };
 

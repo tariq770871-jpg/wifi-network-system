@@ -1,5 +1,10 @@
-const success = (res, data, message = 'تم بنجاح') => {
-    res.json({ success: true, message, data });
+const success = (res, data, message = 'تم بنجاح', statusCode) => {
+    const payload = { success: true, message, data };
+    if (statusCode) {
+        res.status(statusCode).json(payload);
+    } else {
+        res.json(payload);
+    }
 };
 
 const error = (res, message, statusCode = 400) => {

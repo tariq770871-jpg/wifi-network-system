@@ -1,20 +1,44 @@
 const { query } = require('../../shared/db');
 const { success, error } = require('../../shared/utils/response');
 
+/**
+ * @swagger
+ * /api/reports/dashboard:
+ *   get:
+ *     tags: [Reports]
+ *     summary: إحصائيات الداشبورد
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: إحصائيات شاملة
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tickets:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       status: { type: string }
+ *                       count: { type: integer }
+ *                 technicians:
+ *                   type: object
+ *                 monthly_tickets:
+ *                   type: array
+ */
 const getDashboardStats = async (req, res) => {
     try {
-        // إحصائيات البلاغات
         const ticketsStats = await query(`
-            SELECT 
-                status,
-                COUNT(*) as count
+            SELECT status, COUNT(*) as count
             FROM tickets
             GROUP BY status
         `);
 
-        // إحصائيات الفنيين
         const techniciansStats = await query(`
-            SELECT 
+            SELECT
                 COUNT(*) as total,
                 COUNT(CASE WHEN is_active THEN 1 END) as active,
                 COUNT(CASE WHEN tracking_enabled THEN 1 END) as tracking
@@ -22,9 +46,8 @@ const getDashboardStats = async (req, res) => {
             WHERE role = 'technician'
         `);
 
-        // بلاغات هذا الشهر
         const monthlyTickets = await query(`
-            SELECT 
+            SELECT
                 DATE_TRUNC('day', created_at) as date,
                 COUNT(*) as count
             FROM tickets
@@ -43,10 +66,35 @@ const getDashboardStats = async (req, res) => {
     }
 };
 
+/**
+ * @swagger
+ * /api/reports/technicians:
+ *   get:
+ *     tags: [Reports]
+ *     summary: أداء الفنيين
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: أداء كل فني
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id: { type: integer }
+ *                   full_name: { type: string }
+ *                   total_tasks: { type: integer }
+ *                   completed: { type: integer }
+ *                   in_progress: { type: integer }
+ *                   pending: { type: integer }
+ */
 const getTechnicianPerformance = async (req, res) => {
     try {
         const result = await query(`
-            SELECT 
+            SELECT
                 u.id,
                 u.full_name,
                 COUNT(t.id) as total_tasks,
