@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { trackingApi } from '../../services/tracking.service'
-import { usersApi } from '../../services/users.service'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Wifi, Battery, Navigation, Clock } from 'lucide-react'
 
-// Fix Leaflet default marker icon issue
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 
@@ -24,18 +22,13 @@ export default function TrackingPage() {
   const [selectedTech, setSelectedTech] = useState(null)
   const [refreshInterval, setRefreshInterval] = useState(10)
 
-  // Fix: إضافة isLoading
-  const { data: liveData, isLoading, refetch } = useQuery(
-    'live-tracking',
-    trackingApi.getLive,
-    { refetchInterval: refreshInterval * 1000 }
-  )
+  const { data: liveData, isLoading } = useQuery({
+    queryKey: ['live-tracking'],
+    queryFn: trackingApi.getLive,
+    refetchInterval: refreshInterval * 1000,
+  })
 
-  const { data: usersData } = useQuery('users', usersApi.getAll)
-
-  // Fix: تغيير data.data إلى data
-  const technicians = liveData?.data || []
-  const allUsers = usersData?.data || []
+  const technicians = liveData || []
 
   const getStatusColor = (tech) => {
     if (tech.tracking_veto) return 'text-yellow-500'
@@ -65,9 +58,7 @@ export default function TrackingPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">التتبع الحي</h1>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">
-            {technicians.length} فني متصل
-          </span>
+          <span className="text-sm text-gray-500">{technicians.length} فني متصل</span>
           <select
             value={refreshInterval}
             onChange={(e) => setRefreshInterval(Number(e.target.value))}
@@ -81,11 +72,8 @@ export default function TrackingPage() {
       </div>
 
       <div className="flex gap-4 h-full">
-        {/* Technicians List */}
         <div className="w-80 bg-white rounded-xl shadow-sm border overflow-auto">
-          <div className="p-4 border-b">
-            <h2 className="font-bold">الفنيين</h2>
-          </div>
+          <div className="p-4 border-b"><h2 className="font-bold">الفنيين</h2></div>
           {technicians.length === 0 ? (
             <div className="p-4 text-center text-gray-500">لا يوجد فنين متصلين</div>
           ) : (
@@ -106,14 +94,8 @@ export default function TrackingPage() {
                 </div>
                 {tech.speed > 0 && (
                   <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Navigation size={12} />
-                      {tech.speed?.toFixed(1)} km/h
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Battery size={12} />
-                      {tech.battery}%
-                    </span>
+                    <span className="flex items-center gap-1"><Navigation size={12} />{tech.speed?.toFixed(1)} km/h</span>
+                    <span className="flex items-center gap-1"><Battery size={12} />{tech.battery}%</span>
                   </div>
                 )}
               </div>
@@ -121,23 +103,11 @@ export default function TrackingPage() {
           )}
         </div>
 
-        {/* Map */}
         <div className="flex-1 bg-white rounded-xl shadow-sm border overflow-hidden">
-          <MapContainer
-            center={[24.7136, 46.6753]}
-            zoom={13}
-            style={{ height: '100%', width: '100%' }}
-          >
-            <TileLayer
-              url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
-              attribution="Google Satellite"
-            />
+          <MapContainer center={[24.7136, 46.6753]} zoom={13} style={{ height: '100%', width: '100%' }}>
+            <TileLayer url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" attribution="Google Satellite" />
             {technicians.map((tech) => (
-              <Marker
-                key={tech.user_id}
-                position={[tech.lat, tech.lng]}
-                icon={defaultIcon}
-              >
+              <Marker key={tech.user_id} position={[tech.lat, tech.lng]} icon={defaultIcon}>
                 <Popup>
                   <div className="text-right">
                     <div className="font-bold">{tech.full_name}</div>

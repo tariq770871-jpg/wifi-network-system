@@ -5,14 +5,16 @@ import {
   Ticket,
   Users,
   Activity,
-  AlertTriangle,
   CheckCircle,
   Clock,
   MapPin
 } from 'lucide-react'
 
 export default function DashboardPage() {
-  const { data: stats, isLoading, isError } = useQuery('dashboard', reportsApi.getDashboard)
+  const { data: stats, isLoading, isError } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: reportsApi.getDashboard,
+  })
 
   if (isError) return <div className="p-8 text-center text-red-500">خطأ في تحميل البيانات. تأكد من اتصال السيرفر.</div>
   if (isLoading) {
@@ -23,8 +25,8 @@ export default function DashboardPage() {
     )
   }
 
-  const tickets = stats?.data?.tickets || []
-  const technicians = stats?.data?.technicians || {}
+  const tickets = stats?.tickets || []
+  const technicians = stats?.technicians || {}
 
   const pendingCount = tickets.find(t => t.status === 'pending')?.count || 0
   const inProgressCount = tickets.find(t => t.status === 'in_progress')?.count || 0
