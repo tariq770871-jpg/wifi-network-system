@@ -8,7 +8,6 @@ const config = require('./shared/config');
 
 const errorHandler = require('./shared/middleware/errorHandler');
 
-// Routes
 const { authRoutes } = require('./modules/auth');
 const { usersRoutes } = require('./modules/users');
 const { ticketsRoutes } = require('./modules/tickets');
@@ -23,20 +22,22 @@ const specs = require('./shared/swagger');
 
 const app = express();
 
-// Security middleware
+// Security
 app.use(helmet());
 
-// CORS - strict configuration (no wildcard fallback)
-if (config.cors.origins.length === 0) {
-    console.warn('[WARN] ALLOWED_ORIGINS is not set. CORS will reject all cross-origin requests.');
-    console.warn('[WARN] Set ALLOWED_ORIGINS in .env e.g.: ALLOWED_ORIGINS=http://localhost:5173');
-}
+// CORS
+const corsOrigins = config.cors.origins;
 app.use(cors({
-    origin: config.cors.origins,
+    origin: corsOrigins === true ? true : corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+if (corsOrigins === true) {
+    console.log('[CORS] All origins allowed (non-production mode)');
+} else if (Array.isArray(corsOrigins) && corsOrigins.length > 0) {
+    console.log(`[CORS] Allowed origins: ${corsOrigins.join(', ')}`);
+}
 
 // Rate limiting
 const limiter = rateLimit({
@@ -58,7 +59,7 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString(), env: config.env });
 });
 
-// Swagger API Documentation
+// Swagger
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
     customCss: '.swagger-ui .topbar { display: none }',
     swaggerOptions: { persistAuthorization: true },
@@ -75,7 +76,7 @@ app.use('/api/signal', signalRoutes);
 app.use('/api/networks', networksRoutes);
 app.use('/api/devices', devicesRoutes);
 
-// 404 handler
+// 404
 app.use((req, res) => {
     res.status(404).json({ success: false, error: 'المسار غير موجود' });
 });

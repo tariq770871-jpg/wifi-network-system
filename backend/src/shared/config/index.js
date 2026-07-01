@@ -17,13 +17,22 @@ const config = {
         expiresIn: '24h',
     },
     cors: {
-        origins: process.env.ALLOWED_ORIGINS
-            ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-            : [],
+        get origins() {
+            const raw = process.env.ALLOWED_ORIGINS;
+            if (!raw || raw.trim() === '') {
+                // No origins specified — allow all in non-production
+                if (process.env.NODE_ENV !== 'production') {
+                    return true; // cors origin: true = allow all
+                }
+                // In production, require explicit origins
+                console.warn('[WARN] ALLOWED_ORIGINS is empty in production. CORS will reject all requests.');
+                return [];
+            }
+            return raw.split(',').map(o => o.trim()).filter(Boolean);
+        },
     },
 };
 
-// Validate required variables on startup
 const required = ['DATABASE_URL', 'JWT_SECRET'];
 const missing = required.filter(key => !process.env[key]);
 if (missing.length > 0 && config.env === 'production') {
@@ -31,7 +40,7 @@ if (missing.length > 0 && config.env === 'production') {
     process.exit(1);
 }
 if (missing.length > 0) {
-    console.warn(`[WARN] Missing env variables (using defaults): ${missing.join(', ')}`);
+    console.warn(`[WARN] Missing env variables: ${missing.join(', ')}`);
 }
 
 module.exports = config;
