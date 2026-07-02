@@ -7,18 +7,16 @@ import 'leaflet/dist/leaflet.css'
 import { Check, X, MapPin, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-// Fix Leaflet default marker icon
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 
-const defaultIcon = L.icon({
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
 })
-
-L.Marker.prototype.options.icon = defaultIcon
 
 const statusColors = {
   pending: 'bg-orange-100 text-orange-700',
@@ -27,9 +25,9 @@ const statusColors = {
 }
 
 const statusLabels = {
-  pending: '⏳ بانتظار الموافقة',
-  approved: '✅ معتمد',
-  rejected: '❌ مرفوض',
+  pending: 'بانتظار الموافقة',
+  approved: 'معتمد',
+  rejected: 'مرفوض',
 }
 
 export default function MapPointsPage() {
@@ -51,7 +49,8 @@ export default function MapPointsPage() {
     }
   )
 
-  const points = data?.data?.data || []
+  // api.js interceptor returns response.data = { success, data: [...] }
+  const points = Array.isArray(data?.data) ? data.data : []
   const approvedPoints = points.filter(p => p.status === 'approved')
 
   return (
@@ -121,15 +120,15 @@ export default function MapPointsPage() {
                         <div className="text-sm text-gray-600 mt-1">{point.note}</div>
                       )}
                       <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                        <span>بواسطة: {point.creator_name}</span>
+                        <span>بواسطة: {point.creator_name || '-'}</span>
                         <span className="flex items-center gap-1">
                           <Clock size={12} />
-                          {new Date(point.created_at).toLocaleDateString('ar-SA')}
+                          {point.created_at ? new Date(point.created_at).toLocaleDateString('ar-SA') : '-'}
                         </span>
                       </div>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs ${statusColors[point.status]}`}>
-                      {statusLabels[point.status]}
+                    <span className={`px-2 py-1 rounded-full text-xs ${statusColors[point.status] || 'bg-gray-100 text-gray-700'}`}>
+                      {statusLabels[point.status] || point.status}
                     </span>
                   </div>
                   {point.status === 'pending' && (
@@ -164,22 +163,23 @@ export default function MapPointsPage() {
             style={{ height: '100%', width: '100%' }}
           >
             <TileLayer
-              url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
-              attribution="Google Satellite"
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution="&copy; OpenStreetMap"
             />
             {approvedPoints.map((point) => (
-              <Marker
-                key={point.id}
-                position={[point.location_lat, point.location_lng]}
-                icon={defaultIcon}
-              >
-                <Popup>
-                  <div className="text-right">
-                    <div className="font-bold">{point.name}</div>
-                    {point.note && <div className="text-sm">{point.note}</div>}
-                  </div>
-                </Popup>
-              </Marker>
+              point.location_lat && point.location_lng && (
+                <Marker
+                  key={point.id}
+                  position={[point.location_lat, point.location_lng]}
+                >
+                  <Popup>
+                    <div className="text-right">
+                      <div className="font-bold">{point.name}</div>
+                      {point.note && <div className="text-sm">{point.note}</div>}
+                    </div>
+                  </Popup>
+                </Marker>
+              )
             ))}
           </MapContainer>
         </div>
