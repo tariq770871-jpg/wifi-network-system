@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuthStore } from '../hooks/useAuth'
 import { Wifi } from 'lucide-react'
 
@@ -8,9 +8,15 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true)
   const { login, loading, error } = useAuthStore()
 
+  useEffect(() => {
+    const saved = localStorage.getItem('saved_username')
+    if (saved) setUsername(saved)
+  }, [])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    await login(username, password, rememberMe)
+    const ok = await login(username, password, rememberMe)
+    if (ok) localStorage.setItem('saved_username', username)
   }
 
   return (
@@ -43,6 +49,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               required
+              autoFocus
             />
           </div>
           <div className="flex items-center justify-between">
