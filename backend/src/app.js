@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const swaggerUi = require('swagger-ui-express');
@@ -22,27 +21,19 @@ const specs = require('./shared/swagger');
 
 const app = express();
 
-// Security
-app.use(helmet());
-
-// CORS
+// CORS - allow all origins if ALLOWED_ORIGINS is empty
 const corsOrigins = config.cors.origins;
 app.use(cors({
-    origin: corsOrigins === true ? true : corsOrigins,
+    origin: corsOrigins === true ? true : (Array.isArray(corsOrigins) && corsOrigins.length > 0 ? corsOrigins : true),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-if (corsOrigins === true) {
-    console.log('[CORS] All origins allowed (non-production mode)');
-} else if (Array.isArray(corsOrigins) && corsOrigins.length > 0) {
-    console.log(`[CORS] Allowed origins: ${corsOrigins.join(', ')}`);
-}
 
 // Rate limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 200,
     message: { success: false, error: 'طلبات كثيرة جداً، حاول لاحقاً' },
 });
 app.use(limiter);
