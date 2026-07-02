@@ -16,7 +16,7 @@ const statusLabelMap = {
 
 export default function ReportsPage() {
   const { data: dashRaw, isLoading: dashLoading } = useQuery({
-    queryKey: ['reports-dashboard'],
+    queryKey: ['dashboard'],
     queryFn: reportsApi.getDashboard,
   })
   const { data: techRaw, isLoading: techLoading } = useQuery({

@@ -75,8 +75,8 @@ class AuthService {
         if (!currentPassword || !newPassword) {
             throw { statusCode: 400, message: 'كلمة المرور الحالية والجديدة مطلوبتان' };
         }
-        if (newPassword.length < 4) {
-            throw { statusCode: 400, message: 'كلمة المرور الجديدة يجب أن تكون 4 أحرف على الأقل' };
+        if (newPassword.length < 6) {
+            throw { statusCode: 400, message: 'كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل' };
         }
 
         const result = await query('SELECT hashed_password FROM users WHERE id = $1', [userId]);

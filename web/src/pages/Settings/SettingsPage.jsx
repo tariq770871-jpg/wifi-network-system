@@ -42,7 +42,7 @@ export default function SettingsPage() {
           storage.setItem('user', JSON.stringify({ ...user, ...updated }))
           useAuthStore.setState({ user: { ...user, ...updated } })
         }
-        queryClient.invalidateQueries('me')
+        queryClient.invalidateQueries({ queryKey: ['me'] })
       },
       onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
     }
@@ -65,7 +65,7 @@ export default function SettingsPage() {
     (veto) => usersApi.vetoTracking(veto),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries('me')
+        queryClient.invalidateQueries({ queryKey: ['me'] })
         toast.success('تم التحديث')
       },
       onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
@@ -85,8 +85,8 @@ export default function SettingsPage() {
       toast.error('كلمة المرور غير متطابقة')
       return
     }
-    if (newPassword.length < 4) {
-      toast.error('كلمة المرور يجب أن تكون 4 أحرف على الأقل')
+    if (newPassword.length < 6) {
+      toast.error('كلمة المرور يجب أن تكون 6 أحرف على الأقل')
       return
     }
     passwordMutation.mutate({ current_password: currentPassword, new_password: newPassword })

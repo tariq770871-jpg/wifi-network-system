@@ -2,20 +2,8 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { trackingApi } from '../../services/tracking.service'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import { Wifi, Battery, Navigation, Clock } from 'lucide-react'
-
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
-
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-})
+import { Battery, Navigation, AlertTriangle } from 'lucide-react'
+import L from '../../lib/leaflet-setup'
 
 export default function TrackingPage() {
   const [selectedTech, setSelectedTech] = useState(null)
@@ -27,9 +15,7 @@ export default function TrackingPage() {
     refetchInterval: refreshInterval * 1000,
   })
 
-  // api.js interceptor returns response.data = { success, data: [...] }
-  const technicians = liveDataRaw?.data || []
-  const isErrorFatal = isError || (liveDataRaw && !Array.isArray(liveDataRaw.data))
+  const technicians = Array.isArray(liveDataRaw?.data) ? liveDataRaw.data : []
 
   const getStatusColor = (tech) => {
     if (tech.tracking_veto) return 'bg-yellow-500'
@@ -49,6 +35,18 @@ export default function TrackingPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-gray-500">جاري تحميل مواقع الفنيين...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="h-[calc(100vh-2rem)] flex items-center justify-center">
+        <div className="text-center p-8 bg-white rounded-xl shadow-sm border max-w-md">
+          <AlertTriangle size={48} className="text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 mb-2">فشل في تحميل بيانات التتبع</h2>
+          <p className="text-gray-500">تأكد من اتصالك بالإنترنت وحاول مرة أخرى</p>
         </div>
       </div>
     )

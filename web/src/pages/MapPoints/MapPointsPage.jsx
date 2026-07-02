@@ -1,21 +1,18 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { mapPointsApi } from '../../services/mapPoints.service'
+import { useAuthStore } from '../../hooks/useAuth'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import { Check, X, MapPin, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow })
+import L from '../../lib/leaflet-setup'
 
 const statusColors = { pending: 'bg-orange-100 text-orange-700', approved: 'bg-green-100 text-green-700', rejected: 'bg-red-100 text-red-700' }
 const statusLabels = { pending: 'بانتظار الموافقة', approved: 'معتمد', rejected: 'مرفوض' }
 
 export default function MapPointsPage() {
+  const { user } = useAuthStore()
+  const canReview = user?.role === 'admin' || user?.role === 'support'
   const [filter, setFilter] = useState('pending')
   const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({ queryKey: ['map-points', filter], queryFn: () => mapPointsApi.getAll(filter ? { status: filter } : {}) })
@@ -66,7 +63,7 @@ export default function MapPointsPage() {
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs ${statusColors[point.status]||'bg-gray-100 text-gray-700'}`}>{statusLabels[point.status]||point.status}</span>
                 </div>
-                {point.status==='pending'&&(
+                {point.status==='pending' && canReview && (
                   <div className="flex gap-2 mt-3">
                     <button onClick={()=>reviewMutation.mutate({id:point.id,status:'approved'})} className="flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600"><Check size={14}/>{'موافقة'}</button>
                     <button onClick={()=>reviewMutation.mutate({id:point.id,status:'rejected'})} className="flex items-center gap-1 bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600"><X size={14}/>{'رفض'}</button>

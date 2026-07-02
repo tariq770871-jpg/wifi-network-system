@@ -32,7 +32,7 @@ export default function UsersPage() {
     ({ id, data }) => usersApi.update(id, data),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries('users')
+        queryClient.invalidateQueries({ queryKey: ['users'] })
         setEditingUser(null)
         toast.success('تم تحديث المستخدم')
       },
@@ -44,7 +44,7 @@ export default function UsersPage() {
     ({ id, enabled }) => usersApi.controlTracking(id, enabled),
     {
       onSuccess: (_, variables) => {
-        queryClient.invalidateQueries('users')
+        queryClient.invalidateQueries({ queryKey: ['users'] })
         toast.success(variables.enabled ? 'تم تفعيل التتبع' : 'تم إيقاف التتبع')
       },
       onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
@@ -55,7 +55,7 @@ export default function UsersPage() {
     (data) => authApi.register(data),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries('users')
+        queryClient.invalidateQueries({ queryKey: ['users'] })
         setShowAdd(false)
         setAddForm({ username: '', password: '', full_name: '', phone: '', email: '' })
         toast.success('تم إنشاء المستخدم')

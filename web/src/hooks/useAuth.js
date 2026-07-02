@@ -30,10 +30,14 @@ export const useAuthStore = create((set, get) => ({
       const storage = getStorage(rememberMe)
       storage.setItem('token', token)
       storage.setItem('user', JSON.stringify(user))
-      // Clear the other storage
       const other = rememberMe ? sessionStorage : localStorage
       other.removeItem('token')
       other.removeItem('user')
+      if (rememberMe) {
+        localStorage.setItem('saved_username', username)
+      } else {
+        localStorage.removeItem('saved_username')
+      }
       set({ user, token, isAuthenticated: true, loading: false })
       window.location.href = '/'
       return true
@@ -46,6 +50,7 @@ export const useAuthStore = create((set, get) => ({
   logout: () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    localStorage.removeItem('saved_username')
     sessionStorage.removeItem('token')
     sessionStorage.removeItem('user')
     set({ user: null, token: null, isAuthenticated: false })
