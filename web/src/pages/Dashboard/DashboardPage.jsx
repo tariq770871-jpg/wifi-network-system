@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 
 export default function DashboardPage() {
-  const { data: stats, isLoading, isError } = useQuery({
+  const { data: statsData, isLoading, isError } = useQuery({
     queryKey: ['dashboard'],
     queryFn: reportsApi.getDashboard,
   })
@@ -25,13 +25,15 @@ export default function DashboardPage() {
     )
   }
 
-  const tickets = stats?.tickets || []
-  const technicians = stats?.technicians || {}
+  // api.js interceptor returns response.data = { success, data: {...} }
+  const stats = statsData?.data || {}
+  const tickets = stats.tickets || []
+  const technicians = stats.technicians || {}
 
   const pendingCount = tickets.find(t => t.status === 'pending')?.count || 0
   const inProgressCount = tickets.find(t => t.status === 'in_progress')?.count || 0
   const completedCount = tickets.find(t => t.status === 'completed')?.count || 0
-  const totalCount = tickets.reduce((sum, t) => sum + parseInt(t.count), 0)
+  const totalCount = tickets.reduce((sum, t) => sum + parseInt(t.count || 0), 0)
 
   return (
     <div>
