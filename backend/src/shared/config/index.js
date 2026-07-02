@@ -20,13 +20,8 @@ const config = {
         get origins() {
             const raw = process.env.ALLOWED_ORIGINS;
             if (!raw || raw.trim() === '') {
-                // No origins specified — allow all in non-production
-                if (process.env.NODE_ENV !== 'production') {
-                    return true; // cors origin: true = allow all
-                }
-                // In production, require explicit origins
-                console.warn('[WARN] ALLOWED_ORIGINS is empty in production. CORS will reject all requests.');
-                return [];
+                // No origins specified = allow all (works in all environments)
+                return true;
             }
             return raw.split(',').map(o => o.trim()).filter(Boolean);
         },
