@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useAuthStore } from '../hooks/useAuth'
-import { authApi } from '../services/auth.service'
-import { usersApi } from '../services/users.service'
+import { useAuthStore } from '../../hooks/useAuth'
+import { authApi } from '../../services/auth.service'
+import { usersApi } from '../../services/users.service'
 import { User, Lock, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 
