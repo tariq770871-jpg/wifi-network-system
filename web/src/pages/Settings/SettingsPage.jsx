@@ -11,7 +11,7 @@ export default function SettingsPage() {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState('profile')
 
-  const { data: meData } = useQuery('me', authApi.me)
+  const { data: meData } = useQuery({ queryKey: ['me'], queryFn: authApi.me })
   const current = meData?.data || user || {}
 
   const [fullName, setFullName] = useState('')

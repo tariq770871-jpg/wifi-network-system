@@ -26,7 +26,7 @@ export default function UsersPage() {
   })
   const queryClient = useQueryClient()
 
-  const { data: usersData, isLoading } = useQuery('users', usersApi.getAll)
+  const { data: usersData, isLoading } = useQuery({ queryKey: ['users'], queryFn: usersApi.getAll })
 
   const updateMutation = useMutation(
     ({ id, data }) => usersApi.update(id, data),
