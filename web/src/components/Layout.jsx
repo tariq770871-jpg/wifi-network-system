@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../hooks/useAuth'
-import { LayoutDashboard, Ticket, MapPin, Map, BarChart3, LogOut, Menu, Settings } from 'lucide-react'
+import { LayoutDashboard, Ticket, MapPin, Map, BarChart3, LogOut, Menu, Settings, Users as UsersIcon } from 'lucide-react'
 import { useState } from 'react'
 
 const allNavItems = [
@@ -8,7 +8,8 @@ const allNavItems = [
   { path: '/tickets', label: 'البلاغات', icon: Ticket, roles: ['admin','support','technician'] },
   { path: '/tracking', label: 'التتبع الحي', icon: MapPin, roles: ['admin','support'] },
   { path: '/map-points', label: 'نقاط الخريطة', icon: Map, roles: ['admin','support','technician'] },
-  { path: '/reports', label: 'التقارير', icon: BarChart3, roles: ['admin'] },
+  { path: '/reports', label: 'التقارير', icon: BarChart3, roles: ['admin','support'] },
+  { path: '/users', label: 'المستخدمين', icon: UsersIcon, roles: ['admin'] },
   { path: '/settings', label: 'الإعدادات', icon: Settings, roles: ['admin','support','technician'] },
 ]
 

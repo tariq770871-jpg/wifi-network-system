@@ -67,6 +67,49 @@ class AuthService {
 
         return result.rows[0];
     }
+
+    /**
+     * Change user's own password
+     */
+    static async changePassword(userId, currentPassword, newPassword) {
+        if (!currentPassword || !newPassword) {
+            throw { statusCode: 400, message: 'كلمة المرور الحالية والجديدة مطلوبتان' };
+        }
+        if (newPassword.length < 4) {
+            throw { statusCode: 400, message: 'كلمة المرور الجديدة يجب أن تكون 4 أحرف على الأقل' };
+        }
+
+        const result = await query('SELECT hashed_password FROM users WHERE id = $1', [userId]);
+        if (result.rows.length === 0) {
+            throw { statusCode: 404, message: 'المستخدم غير موجود' };
+        }
+
+        const valid = await bcrypt.compare(currentPassword, result.rows[0].hashed_password);
+        if (!valid) {
+            throw { statusCode: 401, message: 'كلمة المرور الحالية غير صحيحة' };
+        }
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        await query('UPDATE users SET hashed_password = $1, updated_at = NOW() WHERE id = $2', [hashed, userId]);
+        return null;
+    }
+
+    /**
+     * Update user's own profile
+     */
+    static async updateProfile(userId, data) {
+        const { full_name, phone, email } = data;
+        const result = await query(
+            'UPDATE users SET full_name = COALESCE($1, full_name), phone = COALESCE($2, phone), email = COALESCE($3, email), updated_at = NOW() WHERE id = $4 RETURNING id, username, full_name, role, phone, email, tracking_enabled, tracking_veto',
+            [full_name, phone, email, userId]
+        );
+
+        if (result.rows.length === 0) {
+            throw { statusCode: 404, message: 'المستخدم غير موجود' };
+        }
+
+        return result.rows[0];
+    }
 }
 
 module.exports = AuthService;

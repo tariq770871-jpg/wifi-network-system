@@ -87,4 +87,25 @@ const me = async (req, res) => {
     }
 };
 
-module.exports = { register, login, me };
+const changePassword = async (req, res) => {
+    try {
+        const { current_password, new_password } = req.body;
+        await AuthService.changePassword(req.user.id, current_password, new_password);
+        success(res, null, 'تم تغيير كلمة المرور بنجاح');
+    } catch (err) {
+        const statusCode = err.statusCode || 500;
+        error(res, err.message, statusCode);
+    }
+};
+
+const updateProfile = async (req, res) => {
+    try {
+        const user = await AuthService.updateProfile(req.user.id, req.body);
+        success(res, user, 'تم تحديث الملف الشخصي بنجاح');
+    } catch (err) {
+        const statusCode = err.statusCode || 500;
+        error(res, err.message, statusCode);
+    }
+};
+
+module.exports = { register, login, me, changePassword, updateProfile };
