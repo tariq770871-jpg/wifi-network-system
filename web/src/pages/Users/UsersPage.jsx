@@ -28,41 +28,35 @@ export default function UsersPage() {
 
   const { data: usersData, isLoading } = useQuery({ queryKey: ['users'], queryFn: usersApi.getAll })
 
-  const updateMutation = useMutation(
-    ({ id, data }) => usersApi.update(id, data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['users'] })
-        setEditingUser(null)
-        toast.success('تم تحديث المستخدم')
-      },
-      onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
-    }
-  )
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => usersApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setEditingUser(null)
+      toast.success('تم تحديث المستخدم')
+    },
+    onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
+  })
 
-  const trackingMutation = useMutation(
-    ({ id, enabled }) => usersApi.controlTracking(id, enabled),
-    {
-      onSuccess: (_, variables) => {
-        queryClient.invalidateQueries({ queryKey: ['users'] })
-        toast.success(variables.enabled ? 'تم تفعيل التتبع' : 'تم إيقاف التتبع')
-      },
-      onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
-    }
-  )
+  const trackingMutation = useMutation({
+    mutationFn: ({ id, enabled }) => usersApi.controlTracking(id, enabled),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      toast.success(variables.enabled ? 'تم تفعيل التتبع' : 'تم إيقاف التتبع')
+    },
+    onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
+  })
 
-  const registerMutation = useMutation(
-    (data) => authApi.register(data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['users'] })
-        setShowAdd(false)
-        setAddForm({ username: '', password: '', full_name: '', phone: '', email: '' })
-        toast.success('تم إنشاء المستخدم')
-      },
-      onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
-    }
-  )
+  const registerMutation = useMutation({
+    mutationFn: (data) => authApi.register(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setShowAdd(false)
+      setAddForm({ username: '', password: '', full_name: '', phone: '', email: '' })
+      toast.success('تم إنشاء المستخدم')
+    },
+    onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
+  })
 
   const users = Array.isArray(usersData?.data) ? usersData.data : []
 

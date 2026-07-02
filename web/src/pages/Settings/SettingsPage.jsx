@@ -31,46 +31,40 @@ export default function SettingsPage() {
     }
   }, [current.full_name, current.phone, current.email])
 
-  const profileMutation = useMutation(
-    (data) => authApi.updateProfile(data),
-    {
-      onSuccess: (res) => {
-        toast.success('تم تحديث الملف الشخصي')
-        const updated = res?.data
-        if (updated) {
-          const storage = localStorage.getItem('token') ? localStorage : sessionStorage
-          storage.setItem('user', JSON.stringify({ ...user, ...updated }))
-          useAuthStore.setState({ user: { ...user, ...updated } })
-        }
-        queryClient.invalidateQueries({ queryKey: ['me'] })
-      },
-      onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
-    }
-  )
+  const profileMutation = useMutation({
+    mutationFn: (data) => authApi.updateProfile(data),
+    onSuccess: (res) => {
+      toast.success('تم تحديث الملف الشخصي')
+      const updated = res?.data
+      if (updated) {
+        const storage = localStorage.getItem('token') ? localStorage : sessionStorage
+        storage.setItem('user', JSON.stringify({ ...user, ...updated }))
+        useAuthStore.setState({ user: { ...user, ...updated } })
+      }
+      queryClient.invalidateQueries({ queryKey: ['me'] })
+    },
+    onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
+  })
 
-  const passwordMutation = useMutation(
-    ({ current_password, new_password }) => authApi.changePassword(current_password, new_password),
-    {
-      onSuccess: () => {
-        toast.success('تم تغيير كلمة المرور')
-        setCurrentPassword('')
-        setNewPassword('')
-        setConfirmPassword('')
-      },
-      onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
-    }
-  )
+  const passwordMutation = useMutation({
+    mutationFn: ({ current_password, new_password }) => authApi.changePassword(current_password, new_password),
+    onSuccess: () => {
+      toast.success('تم تغيير كلمة المرور')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    },
+    onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
+  })
 
-  const vetoMutation = useMutation(
-    (veto) => usersApi.vetoTracking(veto),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['me'] })
-        toast.success('تم التحديث')
-      },
-      onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
-    }
-  )
+  const vetoMutation = useMutation({
+    mutationFn: (veto) => usersApi.vetoTracking(veto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['me'] })
+      toast.success('تم التحديث')
+    },
+    onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
+  })
 
   const handleProfileSave = () => {
     profileMutation.mutate({ full_name: fullName, phone, email })
