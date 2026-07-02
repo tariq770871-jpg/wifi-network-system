@@ -6,34 +6,35 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Wifi, Battery, Navigation, Clock } from 'lucide-react'
 
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 
-const defaultIcon = L.icon({
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
 })
-
-L.Marker.prototype.options.icon = defaultIcon
 
 export default function TrackingPage() {
   const [selectedTech, setSelectedTech] = useState(null)
   const [refreshInterval, setRefreshInterval] = useState(10)
 
-  const { data: liveData, isLoading } = useQuery({
+  const { data: liveDataRaw, isLoading, isError } = useQuery({
     queryKey: ['live-tracking'],
     queryFn: trackingApi.getLive,
     refetchInterval: refreshInterval * 1000,
   })
 
-  const technicians = liveData || []
+  // api.js interceptor returns response.data = { success, data: [...] }
+  const technicians = liveDataRaw?.data || []
+  const isErrorFatal = isError || (liveDataRaw && !Array.isArray(liveDataRaw.data))
 
   const getStatusColor = (tech) => {
-    if (tech.tracking_veto) return 'text-yellow-500'
-    if (!tech.tracking_enabled) return 'text-gray-400'
-    return 'text-green-500'
+    if (tech.tracking_veto) return 'bg-yellow-500'
+    if (!tech.tracking_enabled) return 'bg-gray-400'
+    return 'bg-green-500'
   }
 
   const getStatusText = (tech) => {
@@ -71,22 +72,22 @@ export default function TrackingPage() {
         </div>
       </div>
 
-      <div className="flex gap-4 h-full">
-        <div className="w-80 bg-white rounded-xl shadow-sm border overflow-auto">
+      <div className="flex gap-4" style={{ height: 'calc(100vh - 6rem)' }}>
+        <div className="w-80 bg-white rounded-xl shadow-sm border overflow-auto flex-shrink-0">
           <div className="p-4 border-b"><h2 className="font-bold">الفنيين</h2></div>
           {technicians.length === 0 ? (
             <div className="p-4 text-center text-gray-500">لا يوجد فنين متصلين</div>
           ) : (
             technicians.map((tech) => (
               <div
-                key={tech.user_id}
+                key={tech.user_id || tech.id}
                 onClick={() => setSelectedTech(tech)}
                 className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
                   selectedTech?.user_id === tech.user_id ? 'bg-blue-50 border-blue-200' : ''
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${getStatusColor(tech).replace('text-', 'bg-')}`} />
+                  <div className={`w-3 h-3 rounded-full ${getStatusColor(tech)}`} />
                   <div className="flex-1">
                     <div className="font-medium">{tech.full_name}</div>
                     <div className="text-xs text-gray-500">{getStatusText(tech)}</div>
@@ -105,21 +106,23 @@ export default function TrackingPage() {
 
         <div className="flex-1 bg-white rounded-xl shadow-sm border overflow-hidden">
           <MapContainer center={[24.7136, 46.6753]} zoom={13} style={{ height: '100%', width: '100%' }}>
-            <TileLayer url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" attribution="Google Satellite" />
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
             {technicians.map((tech) => (
-              <Marker key={tech.user_id} position={[tech.lat, tech.lng]} icon={defaultIcon}>
-                <Popup>
-                  <div className="text-right">
-                    <div className="font-bold">{tech.full_name}</div>
-                    <div className="text-sm text-gray-500">{getStatusText(tech)}</div>
-                    <div className="mt-2 text-xs">
-                      <div>البطارية: {tech.battery}%</div>
-                      <div>الإشارة: {tech.signal_dbm} dBm</div>
-                      <div>آخر تحديث: {new Date(tech.last_update).toLocaleTimeString('ar-SA')}</div>
+              tech.lat && tech.lng && (
+                <Marker key={tech.user_id || tech.id} position={[tech.lat, tech.lng]}>
+                  <Popup>
+                    <div className="text-right">
+                      <div className="font-bold">{tech.full_name}</div>
+                      <div className="text-sm text-gray-500">{getStatusText(tech)}</div>
+                      <div className="mt-2 text-xs">
+                        <div>البطارية: {tech.battery}%</div>
+                        <div>الإشارة: {tech.signal_dbm} dBm</div>
+                        <div>آخر تحديث: {tech.last_update ? new Date(tech.last_update).toLocaleTimeString('ar-SA') : '-'}</div>
+                      </div>
                     </div>
-                  </div>
-                </Popup>
-              </Marker>
+                  </Popup>
+                </Marker>
+              )
             ))}
           </MapContainer>
         </div>
