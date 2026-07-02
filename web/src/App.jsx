@@ -8,6 +8,7 @@ import TicketsPage from './pages/Tickets/TicketsPage'
 import TrackingPage from './pages/Tracking/TrackingPage'
 import MapPointsPage from './pages/MapPoints/MapPointsPage'
 import ReportsPage from './pages/Reports/ReportsPage'
+import SettingsPage from './pages/Settings/SettingsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -23,11 +24,11 @@ function App() {
             <Route path="/tracking" element={<TrackingPage />} />
             <Route path="/map-points" element={<MapPointsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>
       </Routes>
     </ErrorBoundary>
   )
 }
-
 export default App
