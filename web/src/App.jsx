@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/Dashboard/DashboardPage'
@@ -11,7 +12,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   return (
-    <>
+    <ErrorBoundary>
       <Toaster position="top-left" toastOptions={{ duration: 3000 }} />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -25,7 +26,7 @@ function App() {
           </Route>
         </Route>
       </Routes>
-    </>
+    </ErrorBoundary>
   )
 }
 
