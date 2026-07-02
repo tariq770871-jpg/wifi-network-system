@@ -5,11 +5,12 @@ import { Wifi } from 'lucide-react'
 export default function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(true)
   const { login, loading, error } = useAuthStore()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    await login(username, password)
+    await login(username, password, rememberMe)
   }
 
   return (
@@ -43,6 +44,17 @@ export default function LoginPage() {
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               required
             />
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-[#1976D2]"
+              />
+              <span className="text-sm text-gray-600">تذكرني</span>
+            </label>
           </div>
           {error && (
             <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">{error}</div>
