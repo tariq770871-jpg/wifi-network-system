@@ -1,7 +1,11 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../hooks/useAuth'
 import { LayoutDashboard, Ticket, MapPin, Map, BarChart3, LogOut, Menu, Settings, Users as UsersIcon, X, Sun, Moon } from 'lucide-react'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
+import { Bell } from 'lucide-react'
+import { socket } from '../services/socketClient'
 
 const THEME_KEY = 'theme'
 
@@ -30,6 +34,9 @@ export default function Layout() {
   )
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [themeMode, setThemeMode] = useState(getInitialThemeMode)
+  const [notifications, setNotifications] = useState([])
+  const [showNotifPanel, setShowNotifPanel] = useState(false)
+  const queryClient = useQueryClient()
   const userRole = user?.role || 'technician'
   const navItems = allNavItems.filter(item => item.roles.includes(userRole))
 
@@ -83,6 +90,47 @@ export default function Layout() {
     setThemeMode(resolvedTheme === 'dark' ? 'light' : 'dark')
   }
 
+  const addNotification = useCallback((message) => {
+    setNotifications(prev => [{ id: Date.now(), text: message, read: false }, ...prev].slice(0, 50))
+  }, [])
+
+  // Socket.IO connection
+  useEffect(() => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+    if (!token || !user) {
+      socket.disconnect()
+      return
+    }
+
+    socket.connect()
+    socket.emit('join_room', user.role)
+
+    const onTicketCreated = (event) => {
+      toast.success(event.message, { position: 'top-left', duration: 4000 })
+      addNotification(event.message)
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    }
+
+    const onTicketUpdated = (event) => {
+      toast.success(event.message, { position: 'top-left', duration: 4000 })
+      addNotification(event.message)
+      queryClient.invalidateQueries({ queryKey: ['tickets'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    }
+
+    socket.on('ticket:created', onTicketCreated)
+    socket.on('ticket:updated', onTicketUpdated)
+
+    return () => {
+      socket.off('ticket:created', onTicketCreated)
+      socket.off('ticket:updated', onTicketUpdated)
+      socket.disconnect()
+    }
+  }, [user, queryClient, addNotification])
+
+  const unreadCount = notifications.filter(n => !n.read).length
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Mobile hamburger button */}
@@ -127,6 +175,43 @@ export default function Layout() {
               </Link>
             )
           })}
+          {/* Notification bell - desktop only when sidebar collapsed */}
+          {isDesktop && !sidebarOpen && (
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifPanel(!showNotifPanel)}
+                className="flex items-center justify-center w-full px-3 py-2 rounded-lg transition-colors text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <div className="relative">
+                  <Bell size={20} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                  )}
+                </div>
+              </button>
+              {showNotifPanel && (
+                <div className="absolute bottom-full right-0 mb-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-2 z-50 text-right">
+                  <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">الإشعارات</h3>
+                    {unreadCount > 0 && (
+                      <button onClick={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))} className="text-xs text-primary hover:underline">تعيين الكل كمقروء</button>
+                    )}
+                  </div>
+                  <div className="max-h-60 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <p className="text-xs text-gray-400 dark:text-gray-500 p-4 text-center">لا توجد إشعارات</p>
+                    ) : (
+                      notifications.slice(0, 20).map(n => (
+                        <div key={n.id} className={`p-2 text-xs border-b border-gray-100 dark:border-gray-700 last:border-0 ${!n.read ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}>
+                          {n.text}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}

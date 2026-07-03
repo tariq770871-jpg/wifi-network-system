@@ -87,7 +87,16 @@ const create = async (req, res) => {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', $10) RETURNING *`,
             [title, description, customer_name, customer_phone, customer_address, location_lat, location_lng, priority, assigned_to, req.user?.id]
         );
-        success(res, result.rows[0], 'تم إنشاء البلاغ بنجاح', 201);
+        const ticket = result.rows[0];
+        success(res, ticket, 'تم إنشاء البلاغ بنجاح', 201);
+
+        // Emit real-time notification
+        if (req.io) {
+            req.io.to('admin').to('support').emit('ticket:created', {
+                message: `تم إنشاء بلاغ جديد: ${ticket.title}`,
+                data: ticket,
+            });
+        }
     } catch (err) {
         error(res, err.message, 500);
     }
@@ -140,7 +149,17 @@ const update = async (req, res) => {
         if (result.rows.length === 0) {
             return error(res, 'البلاغ غير موجود', 404);
         }
-        success(res, result.rows[0], 'تم تحديث البلاغ');
+        const ticket = result.rows[0];
+        success(res, ticket, 'تم تحديث البلاغ');
+
+        // Emit real-time notification on status change
+        if (req.io && req.body.status && req.body.status !== ticket.status) {
+            const statusLabels = { pending: 'قيد الانتظار', assigned: 'معين', in_progress: 'قيد التنفيذ', completed: 'مكتمل', cancelled: 'ملغي' };
+            req.io.to('admin').to('support').emit('ticket:updated', {
+                message: `تم تغيير حالة بلاغ "${ticket.title}" إلى ${statusLabels[req.body.status] || req.body.status}`,
+                data: ticket,
+            });
+        }
     } catch (err) {
         error(res, err.message, 500);
     }
@@ -216,7 +235,16 @@ const assign = async (req, res) => {
         if (result.rows.length === 0) {
             return error(res, 'البلاغ غير موجود', 404);
         }
-        success(res, result.rows[0], 'تم تعيين الفني');
+        const ticket = result.rows[0];
+        success(res, ticket, 'تم تعيين الفني');
+
+        // Emit real-time notification
+        if (req.io) {
+            req.io.to('admin').to('support').emit('ticket:updated', {
+                message: `تم تعيين فني للبلاغ: ${ticket.title}`,
+                data: ticket,
+            });
+        }
     } catch (err) {
         error(res, err.message, 500);
     }
@@ -248,7 +276,16 @@ const start = async (req, res) => {
         if (result.rows.length === 0) {
             return error(res, 'البلاغ غير موجود', 404);
         }
-        success(res, result.rows[0], 'تم بدء العمل');
+        const ticket = result.rows[0];
+        success(res, ticket, 'تم بدء العمل');
+
+        // Emit real-time notification
+        if (req.io) {
+            req.io.to('admin').to('support').emit('ticket:updated', {
+                message: `بدأ العمل على البلاغ: ${ticket.title}`,
+                data: ticket,
+            });
+        }
     } catch (err) {
         error(res, err.message, 500);
     }
@@ -289,7 +326,16 @@ const complete = async (req, res) => {
         if (result.rows.length === 0) {
             return error(res, 'البلاغ غير موجود', 404);
         }
-        success(res, result.rows[0], 'تم إكمال البلاغ');
+        const ticket = result.rows[0];
+        success(res, ticket, 'تم إكمال البلاغ');
+
+        // Emit real-time notification
+        if (req.io) {
+            req.io.to('admin').to('support').emit('ticket:updated', {
+                message: `تم إكمال البلاغ: ${ticket.title}`,
+                data: ticket,
+            });
+        }
     } catch (err) {
         error(res, err.message, 500);
     }

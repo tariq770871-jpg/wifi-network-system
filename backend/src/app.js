@@ -1,4 +1,6 @@
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
@@ -21,8 +23,47 @@ const specs = require('./shared/swagger');
 
 const app = express();
 
-// CORS - allow all origins if ALLOWED_ORIGINS is empty
+// Create HTTP server for Socket.IO
+const server = http.createServer(app);
+
+// Initialize Socket.IO
 const corsOrigins = config.cors.origins;
+const ioCorsOrigin = corsOrigins === true ? true : (Array.isArray(corsOrigins) && corsOrigins.length > 0 ? corsOrigins : true);
+
+const io = new Server(server, {
+  cors: {
+    origin: ioCorsOrigin,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    credentials: true,
+  },
+});
+
+// Make io accessible in routes/controllers via req.io
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('Socket connected:', socket.id);
+
+  socket.on('join_room', (room) => {
+    socket.join(room);
+    console.log(`Socket ${socket.id} joined room: ${room}`);
+  });
+
+  socket.on('leave_room', (room) => {
+    socket.leave(room);
+    console.log(`Socket ${socket.id} left room: ${room}`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Socket disconnected:', socket.id);
+  });
+});
+
+// CORS - allow all origins if ALLOWED_ORIGINS is empty
 app.use(cors({
     origin: corsOrigins === true ? true : (Array.isArray(corsOrigins) && corsOrigins.length > 0 ? corsOrigins : true),
     credentials: true,
@@ -77,10 +118,10 @@ app.use(errorHandler);
 
 const PORT = config.port;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${config.env}`);
     console.log(`API Docs: http://localhost:${PORT}/api-docs`);
 });
 
-module.exports = app;
+module.exports = { app, server, io };
