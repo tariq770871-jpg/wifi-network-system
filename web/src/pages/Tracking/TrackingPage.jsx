@@ -34,7 +34,7 @@ export default function TrackingPage() {
       <div className="h-[calc(100vh-2rem)] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-500">جاري تحميل مواقع الفنيين...</p>
+          <p className="text-gray-500 dark:text-gray-400">جاري تحميل مواقع الفنيين...</p>
         </div>
       </div>
     )
@@ -43,10 +43,10 @@ export default function TrackingPage() {
   if (isError) {
     return (
       <div className="h-[calc(100vh-2rem)] flex items-center justify-center">
-        <div className="text-center p-8 bg-white rounded-xl shadow-sm border max-w-md">
-          <AlertTriangle size={48} className="text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-800 mb-2">فشل في تحميل بيانات التتبع</h2>
-          <p className="text-gray-500">تأكد من اتصالك بالإنترنت وحاول مرة أخرى</p>
+        <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 max-w-md">
+          <AlertTriangle size={48} className="text-red-500 dark:text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-2">فشل في تحميل بيانات التتبع</h2>
+          <p className="text-gray-500 dark:text-gray-400">تأكد من اتصالك بالإنترنت وحاول مرة أخرى</p>
         </div>
       </div>
     )
@@ -55,13 +55,13 @@ export default function TrackingPage() {
   return (
     <div className="h-[calc(100vh-2rem)]">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">التتبع الحي</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">التتبع الحي</h1>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">{technicians.length} فني متصل</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{technicians.length} فني متصل</span>
           <select
             value={refreshInterval}
             onChange={(e) => setRefreshInterval(Number(e.target.value))}
-            className="border rounded-lg px-3 py-1 text-sm"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             <option value={5}>تحديث كل 5 ثواني</option>
             <option value={10}>تحديث كل 10 ثواني</option>
@@ -71,28 +71,28 @@ export default function TrackingPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4" style={{ height: 'calc(100vh - 6rem)' }}>
-        <div className="w-full lg:w-80 bg-white rounded-xl shadow-sm border overflow-auto flex-shrink-0 lg:max-h-full max-h-48">
-          <div className="p-4 border-b"><h2 className="font-bold">الفنيين</h2></div>
+        <div className="w-full lg:w-80 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-auto flex-shrink-0 lg:max-h-full max-h-48">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700"><h2 className="font-bold text-gray-900 dark:text-white">الفنيين</h2></div>
           {technicians.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">لا يوجد فنين متصلين</div>
+            <div className="p-4 text-center text-gray-500 dark:text-gray-400">لا يوجد فنين متصلين</div>
           ) : (
             technicians.map((tech) => (
               <div
                 key={tech.user_id || tech.id}
                 onClick={() => setSelectedTech(tech)}
-                className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
-                  selectedTech?.user_id === tech.user_id ? 'bg-blue-50 border-blue-200' : ''
+                className={`p-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+                  selectedTech?.user_id === tech.user_id ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : ''
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${getStatusColor(tech)}`} />
                   <div className="flex-1">
-                    <div className="font-medium">{tech.full_name}</div>
-                    <div className="text-xs text-gray-500">{getStatusText(tech)}</div>
+                    <div className="font-medium text-gray-900 dark:text-white">{tech.full_name}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{getStatusText(tech)}</div>
                   </div>
                 </div>
                 {tech.speed > 0 && (
-                  <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+                  <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                     <span className="flex items-center gap-1"><Navigation size={12} />{tech.speed?.toFixed(1)} km/h</span>
                     <span className="flex items-center gap-1"><Battery size={12} />{tech.battery}%</span>
                   </div>
@@ -102,7 +102,7 @@ export default function TrackingPage() {
           )}
         </div>
 
-        <div className="flex-1 bg-white rounded-xl shadow-sm border overflow-hidden min-h-[300px]">
+        <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden min-h-[300px]">
           <MapContainer center={[24.7136, 46.6753]} zoom={13} style={{ height: '100%', width: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
             {technicians.map((tech) => (

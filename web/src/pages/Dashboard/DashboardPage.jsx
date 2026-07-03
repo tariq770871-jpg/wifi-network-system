@@ -16,7 +16,7 @@ export default function DashboardPage() {
     queryFn: reportsApi.getDashboard,
   })
 
-  if (isError) return <div className="p-8 text-center text-red-500">خطأ في تحميل البيانات. تأكد من اتصال السيرفر.</div>
+  if (isError) return <div className="p-8 text-center text-red-500 dark:text-red-400">خطأ في تحميل البيانات. تأكد من اتصال السيرفر.</div>
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -37,7 +37,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">لوحة التحكم</h1>
+      <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">لوحة التحكم</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard title="إجمالي البلاغات" value={totalCount} icon={Ticket} color="blue" />
@@ -47,22 +47,22 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm p-6 border">
-          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
             <Users size={20} className="text-primary" />
             الفنيين النشطين
           </h2>
           <div className="text-3xl font-bold text-primary">{technicians.active || 0}</div>
-          <p className="text-gray-500 text-sm mt-1">من أصل {technicians.total || 0} فني</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">من أصل {technicians.total || 0} فني</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border">
-          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
             <MapPin size={20} className="text-primary" />
             التتبع المفعل
           </h2>
           <div className="text-3xl font-bold text-primary">{technicians.tracking || 0}</div>
-          <p className="text-gray-500 text-sm mt-1">فني يبث موقعه حالياً</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">فني يبث موقعه حالياً</p>
         </div>
       </div>
     </div>

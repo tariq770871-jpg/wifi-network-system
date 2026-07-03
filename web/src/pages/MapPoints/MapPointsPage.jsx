@@ -7,7 +7,11 @@ import { Check, X, MapPin, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import L from '../../lib/leaflet-setup'
 
-const statusColors = { pending: 'bg-orange-100 text-orange-700', approved: 'bg-green-100 text-green-700', rejected: 'bg-red-100 text-red-700' }
+const statusColors = {
+  pending: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+  approved: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+}
 const statusLabels = { pending: 'بانتظار الموافقة', approved: 'معتمد', rejected: 'مرفوض' }
 
 export default function MapPointsPage() {
@@ -26,11 +30,11 @@ export default function MapPointsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">{'نقاط الخريطة'}</h1>
+      <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">{'نقاط الخريطة'}</h1>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        {[{l:'بانتظار المراجعة',c:'text-orange-600',s:'pending'},{l:'معتمدة',c:'text-green-600',s:'approved'},{l:'مرفوضة',c:'text-red-600',s:'rejected'}].map(x=>(
-          <div key={x.s} className="bg-white rounded-xl shadow-sm p-4 border">
-            <div className="text-sm text-gray-500">{x.l}</div>
+        {[{l:'بانتظار المراجعة',c:'text-orange-600 dark:text-orange-400',s:'pending'},{l:'معتمدة',c:'text-green-600 dark:text-green-400',s:'approved'},{l:'مرفوضة',c:'text-red-600 dark:text-red-400',s:'rejected'}].map(x=>(
+          <div key={x.s} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+            <div className="text-sm text-gray-500 dark:text-gray-400">{x.l}</div>
             <div className={`text-2xl font-bold ${x.c}`}>{points.filter(p=>p.status===x.s).length}</div>
           </div>
         ))}
@@ -38,30 +42,30 @@ export default function MapPointsPage() {
       <div className="flex flex-wrap gap-3 mb-6">
         {['all','pending','approved','rejected'].map(s=>(
           <button key={s} onClick={()=>setFilter(s==='all'?'':s)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${((s==='all'&&!filter)||filter===s)?'bg-primary text-white':'bg-white text-gray-600 hover:bg-gray-50 border'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${((s==='all'&&!filter)||filter===s)?'bg-primary text-white':'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'}`}>
             {s==='all'?'الكل':statusLabels[s]}
           </button>
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <div className="p-4 border-b bg-gray-50"><h2 className="font-bold">{'الطلبات'}</h2></div>
-          <div className="divide-y max-h-[500px] overflow-auto">
-            {isLoading?(<div className="p-8 text-center">{'جاري التحميل...'}</div>):points.length===0?(
-              <div className="p-8 text-center text-gray-500">{'لا توجد نقاط'}</div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50"><h2 className="font-bold text-gray-900 dark:text-white">{'الطلبات'}</h2></div>
+          <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-[500px] overflow-auto">
+            {isLoading?(<div className="p-8 text-center text-gray-500 dark:text-gray-400">{'جاري التحميل...'}</div>):points.length===0?(
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400">{'لا توجد نقاط'}</div>
             ):points.map(point=>(
-              <div key={point.id} className="p-4 hover:bg-gray-50">
+              <div key={point.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-medium">{point.name}</div>
-                    <div className="text-sm text-gray-500 mt-1"><MapPin size={14} className="inline ml-1"/>{point.location_lat?.toFixed(5)}, {point.location_lng?.toFixed(5)}</div>
-                    {point.note&&<div className="text-sm text-gray-600 mt-1">{point.note}</div>}
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                    <div className="font-medium text-gray-900 dark:text-white">{point.name}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-1"><MapPin size={14} className="inline ml-1"/>{point.location_lat?.toFixed(5)}, {point.location_lng?.toFixed(5)}</div>
+                    {point.note&&<div className="text-sm text-gray-600 dark:text-gray-300 mt-1">{point.note}</div>}
+                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
                       <span>{'بواسطة: '}{point.creator_name||'-'}</span>
                       <span className="flex items-center gap-1"><Clock size={12}/>{point.created_at?new Date(point.created_at).toLocaleDateString('ar-SA'):'-'}</span>
                     </div>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs ${statusColors[point.status]||'bg-gray-100 text-gray-700'}`}>{statusLabels[point.status]||point.status}</span>
+                  <span className={`px-2 py-1 rounded-full text-xs ${statusColors[point.status]||'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>{statusLabels[point.status]||point.status}</span>
                 </div>
                 {point.status==='pending' && canReview && (
                   <div className="flex gap-2 mt-3">
@@ -73,7 +77,7 @@ export default function MapPointsPage() {
             ))}
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden h-[500px]">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden h-[500px]">
           <MapContainer center={[24.7136,46.6753]} zoom={13} style={{height:'100%',width:'100%'}}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap"/>
             {approvedPoints.filter(p=>p.location_lat&&p.location_lng).map(p=>(

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary: #1976D2;
   --color-primary-dark: #1565C0;
@@ -12,4 +14,27 @@
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+html {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Recharts dark mode overrides */
+.dark .recharts-default-tooltip {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+  color: #e5e7eb !important;
+}
+.dark .recharts-tooltip-label {
+  color: #e5e7eb !important;
+}
+.dark .recharts-tooltip-item {
+  color: #9ca3af !important;
+}
+.dark .recharts-cartesian-axis-tick-value {
+  fill: #9ca3af !important;
+}
+.dark .recharts-cartesian-grid line {
+  stroke: #374151 !important;
 }

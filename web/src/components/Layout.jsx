@@ -1,7 +1,9 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../hooks/useAuth'
-import { LayoutDashboard, Ticket, MapPin, Map, BarChart3, LogOut, Menu, Settings, Users as UsersIcon, X } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { LayoutDashboard, Ticket, MapPin, Map, BarChart3, LogOut, Menu, Settings, Users as UsersIcon, X, Sun, Moon } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+
+const THEME_KEY = 'theme'
 
 const allNavItems = [
   { path: '/', label: 'الرئيسية', icon: LayoutDashboard, roles: ['admin','support','technician'] },
@@ -13,6 +15,13 @@ const allNavItems = [
   { path: '/settings', label: 'الإعدادات', icon: Settings, roles: ['admin','support','technician'] },
 ]
 
+function getInitialThemeMode() {
+  if (typeof window === 'undefined') return 'light'
+  const saved = localStorage.getItem(THEME_KEY)
+  if (saved === 'light' || saved === 'dark' || saved === 'auto') return saved
+  return 'light'
+}
+
 export default function Layout() {
   const { user, logout } = useAuthStore()
   const location = useLocation()
@@ -20,8 +29,40 @@ export default function Layout() {
     typeof window !== 'undefined' ? window.innerWidth >= 768 : false
   )
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [themeMode, setThemeMode] = useState(getInitialThemeMode)
   const userRole = user?.role || 'technician'
   const navItems = allNavItems.filter(item => item.roles.includes(userRole))
+
+  const resolvedTheme = useMemo(() => {
+    if (themeMode === 'auto') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    }
+    return themeMode
+  }, [themeMode])
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.toggle('dark', resolvedTheme === 'dark')
+    localStorage.setItem(THEME_KEY, themeMode)
+  }, [resolvedTheme, themeMode])
+
+  useEffect(() => {
+    if (themeMode !== 'auto') return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = () => setThemeMode(prev => prev) // trigger re-evaluation via resolvedTheme
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [themeMode])
+
+  // Listen for theme changes from Settings page
+  useEffect(() => {
+    const handler = () => {
+      const saved = localStorage.getItem(THEME_KEY)
+      if (saved && saved !== themeMode) setThemeMode(saved)
+    }
+    window.addEventListener('theme-change', handler)
+    return () => window.removeEventListener('theme-change', handler)
+  }, [themeMode])
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 768px)')
@@ -38,8 +79,12 @@ export default function Layout() {
     if (!isDesktop) setSidebarOpen(false)
   }, [isDesktop])
 
+  const toggleTheme = () => {
+    setThemeMode(resolvedTheme === 'dark' ? 'light' : 'dark')
+  }
+
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Mobile hamburger button */}
       {!isDesktop && (
         <button
@@ -63,10 +108,10 @@ export default function Layout() {
         isDesktop
           ? `${sidebarOpen ? 'w-64' : 'w-16'} relative`
           : `fixed top-0 right-0 h-full w-64 z-50 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`
-      } bg-white shadow-lg transition-all duration-300 flex flex-col`}>
-        <div className="p-4 border-b flex items-center justify-between">
+      } bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 flex flex-col`}>
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           {sidebarOpen && <h1 className="text-xl font-bold text-primary">WiFi Manager</h1>}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 hover:bg-gray-100 rounded">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
             {isDesktop ? <Menu size={20} /> : <X size={20} />}
           </button>
         </div>
@@ -77,23 +122,31 @@ export default function Layout() {
             return (
               <Link key={item.path} to={item.path}
                 onClick={() => !isDesktop && setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive?'bg-primary text-white':'text-gray-600 hover:bg-gray-100'}`}>
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${isActive?'bg-primary text-white':'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                 <Icon size={20}/>{sidebarOpen && <span>{item.label}</span>}
               </Link>
             )
           })}
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full"
+          >
+            {resolvedTheme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            {sidebarOpen && <span>{resolvedTheme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}</span>}
+          </button>
         </nav>
-        <div className="p-4 border-t">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">{user?.full_name?.[0]||'U'}</div>
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user?.full_name}</p>
-                <p className="text-xs text-gray-500">{userRole==='admin'?'مدير النظام':userRole==='support'?'دعم فني':'فني'}</p>
+                <p className="text-sm font-medium truncate text-gray-900 dark:text-white">{user?.full_name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{userRole==='admin'?'مدير النظام':userRole==='support'?'دعم فني':'فني'}</p>
               </div>
             )}
           </div>
-          <button onClick={logout} className="flex items-center gap-2 text-red-600 hover:text-red-700 w-full px-3 py-2 rounded-lg hover:bg-red-50">
+          <button onClick={logout} className="flex items-center gap-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 w-full px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30">
             <LogOut size={18}/>{sidebarOpen && <span>{'تسجيل الخروج'}</span>}
           </button>
         </div>
