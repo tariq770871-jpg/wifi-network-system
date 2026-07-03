@@ -130,16 +130,6 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-surface dark:bg-surface-dark">
-      {/* Mobile hamburger */}
-      {!isDesktop && (
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="fixed top-4 right-4 z-50 p-2.5 gradient-primary text-white rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-shadow"
-        >
-          <Menu size={20} />
-        </button>
-      )}
-
       {/* Mobile backdrop */}
       {!isDesktop && mobileOpen && (
         <div
@@ -304,8 +294,17 @@ export default function Layout() {
       {/* ===== MAIN CONTENT ===== */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header Bar */}
-        <header className="h-16 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200/80 dark:border-gray-700/50 flex items-center justify-between px-6 flex-shrink-0 z-30">
+        <header className="h-14 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200/80 dark:border-gray-700/50 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-30">
           <div className="flex items-center gap-3">
+            {/* Mobile hamburger - inside header */}
+            {!isDesktop && (
+              <button
+                onClick={() => setMobileOpen(true)}
+                className="p-2 -mr-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
+              >
+                <Menu size={20} />
+              </button>
+            )}
             <h2 className="text-base font-bold text-gray-900 dark:text-white">
               {currentPage?.label || 'الرئيسية'}
             </h2>
