@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { mapPointsApi } from '../../services/mapPoints.service'
 import { useAuthStore } from '../../hooks/useAuth'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, Marker, Popup } from 'react-leaflet'
 import { Check, X, MapPin, Clock, Loader2, Inbox, Map } from 'lucide-react'
 import toast from 'react-hot-toast'
 import L from '../../lib/leaflet-setup'
+import { LocateControl, LayerToggle } from '../../components/MapControls'
 
 const statusColors = {
   pending: 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/20',
@@ -160,7 +161,8 @@ export default function MapPointsPage() {
         {/* Map */}
         <div className="card overflow-hidden h-[500px]">
           <MapContainer center={[24.7136, 46.6753]} zoom={13} style={{ height: '100%', width: '100%' }} className="z-10">
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+            <LocateControl />
+            <LayerToggle />
             {approvedPoints.filter(p => p.location_lat && p.location_lng).map(p => (
               <Marker key={p.id} position={[p.location_lat, p.location_lng]}>
                 <Popup>

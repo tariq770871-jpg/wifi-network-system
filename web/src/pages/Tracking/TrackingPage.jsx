@@ -1,40 +1,85 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { trackingApi } from '../../services/tracking.service'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
-import { Battery, Navigation, AlertTriangle, RefreshCw, Loader2, MapPin, WifiOff } from 'lucide-react'
+import { useAuthStore } from '../../hooks/useAuth'
+import { MapContainer, Marker, Popup } from 'react-leaflet'
+import { Battery, Navigation, AlertTriangle, RefreshCw, Loader2, MapPin, WifiOff, Play, Square } from 'lucide-react'
 import L from '../../lib/leaflet-setup'
+import { LocateControl, LayerToggle } from '../../components/MapControls'
+import api from '../../services/api'
 
 export default function TrackingPage() {
+  const { user } = useAuthStore()
+  const queryClient = useQueryClient()
   const [selectedTech, setSelectedTech] = useState(null)
   const [refreshInterval, setRefreshInterval] = useState(10)
+  const [isTracking, setIsTracking] = useState(false)
+  const watchIdRef = useRef(null)
+
+  const isTechnician = user?.role === 'technician'
 
   const { data: liveDataRaw, isLoading, isError } = useQuery({
     queryKey: ['live-tracking'],
     queryFn: trackingApi.getLive,
     refetchInterval: refreshInterval * 1000,
+    enabled: !isTechnician,
   })
 
   const technicians = Array.isArray(liveDataRaw?.data) ? liveDataRaw.data : []
+
+  // GPS tracking for technicians
+  const sendLocation = useCallback(async (pos) => {
+    try {
+      await api.post('/tracking/log', {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        heading: pos.coords.heading || null,
+        speed: pos.coords.speed || 0,
+        battery: null,
+        signal_dbm: null,
+      })
+    } catch {
+      // silent fail - tracking will retry on next position update
+    }
+  }, [])
+
+  const startTracking = useCallback(() => {
+    if (!navigator.geolocation) return
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      sendLocation,
+      null,
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    )
+    setIsTracking(true)
+  }, [sendLocation])
+
+  const stopTracking = useCallback(() => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current)
+      watchIdRef.current = null
+    }
+    setIsTracking(false)
+  }, [])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+      }
+    }
+  }, [])
 
   const getStatusColor = (tech) => {
     if (tech.tracking_veto) return 'bg-amber-500'
     if (!tech.tracking_enabled) return 'bg-gray-400'
     return 'bg-emerald-500'
   }
-
-  const getStatusBg = (tech) => {
-    if (tech.tracking_veto) return 'bg-amber-50 dark:bg-amber-500/10'
-    if (!tech.tracking_enabled) return 'bg-gray-50 dark:bg-gray-700/30'
-    return 'bg-emerald-50 dark:bg-emerald-500/10'
-  }
-
   const getStatusText = (tech) => {
     if (tech.tracking_veto) return 'موقوف يدوياً'
     if (!tech.tracking_enabled) return 'متوقف'
     return 'نشط'
   }
-
   const getStatusTextColor = (tech) => {
     if (tech.tracking_veto) return 'text-amber-600 dark:text-amber-400'
     if (!tech.tracking_enabled) return 'text-gray-500 dark:text-gray-400'
@@ -52,7 +97,7 @@ export default function TrackingPage() {
     )
   }
 
-  if (isError) {
+  if (isError && !isTechnician) {
     return (
       <div className="h-[calc(100vh-8rem)] flex items-center justify-center animate-fade-in">
         <div className="card p-8 max-w-md text-center">
@@ -69,16 +114,39 @@ export default function TrackingPage() {
   return (
     <div className="h-[calc(100vh-8rem)] animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">التتبع الحي</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">متابعة مواقع الفنيين في الوقت الحقيقي</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            {isTechnician ? 'شارك موقعك مع الإدارة في الوقت الحقيقي' : 'متابعة مواقع الفنيين في الوقت الحقيقي'}
+          </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{technicians.length} فني متصل</span>
-          </div>
+          {/* Technician: GPS tracking toggle */}
+          {isTechnician && (
+            <button
+              onClick={isTracking ? stopTracking : startTracking}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm ${
+                isTracking
+                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/25'
+                  : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/25'
+              }`}
+            >
+              {isTracking ? <><Square size={15} /> إيقاف البث</> : <><Play size={15} /> بدء البث</>}
+              {isTracking && (
+                <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+              )}
+            </button>
+          )}
+
+          {/* Admin/Support: live count */}
+          {!isTechnician && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg">
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{technicians.length} فني متصل</span>
+            </div>
+          )}
+
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
             <RefreshCw size={12} className="text-blue-500" />
             <select
@@ -95,61 +163,90 @@ export default function TrackingPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4" style={{ height: 'calc(100vh - 10rem)' }}>
-        {/* Technicians List */}
-        <div className="w-full lg:w-80 card overflow-hidden flex-shrink-0 lg:max-h-full max-h-52">
-          <div className="p-4 border-b border-gray-100 dark:border-gray-700/50">
-            <h2 className="font-bold text-sm text-gray-900 dark:text-white">الفنيين</h2>
-          </div>
-          <div className="overflow-y-auto max-h-[calc(100%-56px)]">
-            {technicians.length === 0 ? (
-              <div className="p-8 text-center">
-                <WifiOff size={28} className="text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                <p className="text-sm text-gray-400 dark:text-gray-500">لا يوجد فنين متصلين</p>
-              </div>
-            ) : (
-              technicians.map((tech, idx) => (
-                <div
-                  key={tech.user_id || tech.id}
-                  onClick={() => setSelectedTech(tech)}
-                  className={`px-4 py-3.5 border-b border-gray-50 dark:border-gray-700/30 cursor-pointer transition-all duration-200 animate-fade-in ${
-                    selectedTech?.user_id === tech.user_id
-                      ? 'bg-blue-50 dark:bg-blue-500/10 border-l-2 border-l-primary'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/20'
-                  }`}
-                  style={{ animationDelay: `${idx * 0.04}s` }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className={`w-2.5 h-2.5 rounded-full ${getStatusColor(tech)}`} />
-                      {tech.tracking_enabled && !tech.tracking_veto && (
-                        <div className={`absolute inset-0 w-2.5 h-2.5 rounded-full ${getStatusColor(tech)} opacity-40 animate-ping`} />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm text-gray-900 dark:text-white truncate">{tech.full_name}</div>
-                      <div className={`text-xs mt-0.5 ${getStatusTextColor(tech)}`}>{getStatusText(tech)}</div>
-                    </div>
-                  </div>
-                  {tech.speed > 0 && (
-                    <div className="mt-2.5 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500 mr-5.5">
-                      <span className="flex items-center gap-1"><Navigation size={11} />{tech.speed?.toFixed(1)} km/h</span>
-                      <span className="flex items-center gap-1">
-                        <Battery size={11} />
-                        <span className={tech.battery < 20 ? 'text-red-500 font-medium' : ''}>{tech.battery}%</span>
-                      </span>
-                    </div>
-                  )}
+        {/* Technicians List (admin/support only) */}
+        {!isTechnician && (
+          <div className="w-full lg:w-80 card overflow-hidden flex-shrink-0 lg:max-h-full max-h-52">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700/50">
+              <h2 className="font-bold text-sm text-gray-900 dark:text-white">الفنيين</h2>
+            </div>
+            <div className="overflow-y-auto max-h-[calc(100%-56px)]">
+              {technicians.length === 0 ? (
+                <div className="p-8 text-center">
+                  <WifiOff size={28} className="text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                  <p className="text-sm text-gray-400 dark:text-gray-500">لا يوجد فنين متصلين</p>
                 </div>
-              ))
+              ) : (
+                technicians.map((tech, idx) => (
+                  <div
+                    key={tech.user_id || tech.id}
+                    onClick={() => setSelectedTech(tech)}
+                    className={`px-4 py-3.5 border-b border-gray-50 dark:border-gray-700/30 cursor-pointer transition-all duration-200 animate-fade-in ${
+                      selectedTech?.user_id === tech.user_id
+                        ? 'bg-blue-50 dark:bg-blue-500/10 border-l-2 border-l-primary'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-700/20'
+                    }`}
+                    style={{ animationDelay: `${idx * 0.04}s` }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className={`w-2.5 h-2.5 rounded-full ${getStatusColor(tech)}`} />
+                        {tech.tracking_enabled && !tech.tracking_veto && (
+                          <div className={`absolute inset-0 w-2.5 h-2.5 rounded-full ${getStatusColor(tech)} opacity-40 animate-ping`} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm text-gray-900 dark:text-white truncate">{tech.full_name}</div>
+                        <div className={`text-xs mt-0.5 ${getStatusTextColor(tech)}`}>{getStatusText(tech)}</div>
+                      </div>
+                    </div>
+                    {tech.speed > 0 && (
+                      <div className="mt-2.5 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500 mr-5.5">
+                        <span className="flex items-center gap-1"><Navigation size={11} />{tech.speed?.toFixed(1)} km/h</span>
+                        <span className="flex items-center gap-1">
+                          <Battery size={11} />
+                          <span className={tech.battery < 20 ? 'text-red-500 font-medium' : ''}>{tech.battery}%</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Technician: tracking status card */}
+        {isTechnician && (
+          <div className="w-full lg:w-80 card overflow-hidden flex-shrink-0 p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-3 h-3 rounded-full ${isTracking ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+              <h2 className="font-bold text-sm text-gray-900 dark:text-white">
+                {isTracking ? 'جاري البث المباشر' : 'البث متوقف'}
+              </h2>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+              {isTracking
+                ? 'يتم مشاركة موقعك مع الإدارة الآن. سيتم تحديث موقعك تلقائياً كل بضع ثوانٍ.'
+                : 'اضغط على زر "بدء البث" لمشاركة موقعك مع الإدارة في الوقت الحقيقي.'}
+            </p>
+            {isTracking && (
+              <div className="mt-4 p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl">
+                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+                  <Navigation size={14} />
+                  GPS نشط - يتم إرسال موقعك
+                </div>
+              </div>
             )}
           </div>
-        </div>
+        )}
 
         {/* Map */}
         <div className="flex-1 card overflow-hidden min-h-[300px]">
           <MapContainer center={[24.7136, 46.6753]} zoom={13} style={{ height: '100%', width: '100%' }} className="z-10">
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
-            {technicians.map((tech) => (
+            {/* Default street layer - will be managed by LayerToggle */}
+            <LocateControl />
+            <LayerToggle />
+            {!isTechnician && technicians.map((tech) => (
               tech.lat && tech.lng && (
                 <Marker key={tech.user_id || tech.id} position={[tech.lat, tech.lng]}>
                   <Popup>
