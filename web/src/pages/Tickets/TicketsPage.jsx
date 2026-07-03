@@ -43,7 +43,7 @@ export default function TicketsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">البلاغات</h1>
       </div>
-      <div className="flex gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input type="text" placeholder="بحث..." value={filter} onChange={(e) => setFilter(e.target.value)}

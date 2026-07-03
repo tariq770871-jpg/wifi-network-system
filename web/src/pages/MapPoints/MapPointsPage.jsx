@@ -27,7 +27,7 @@ export default function MapPointsPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">{'نقاط الخريطة'}</h1>
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {[{l:'بانتظار المراجعة',c:'text-orange-600',s:'pending'},{l:'معتمدة',c:'text-green-600',s:'approved'},{l:'مرفوضة',c:'text-red-600',s:'rejected'}].map(x=>(
           <div key={x.s} className="bg-white rounded-xl shadow-sm p-4 border">
             <div className="text-sm text-gray-500">{x.l}</div>
@@ -35,7 +35,7 @@ export default function MapPointsPage() {
           </div>
         ))}
       </div>
-      <div className="flex gap-4 mb-6">
+      <div className="flex flex-wrap gap-3 mb-6">
         {['all','pending','approved','rejected'].map(s=>(
           <button key={s} onClick={()=>setFilter(s==='all'?'':s)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${((s==='all'&&!filter)||filter===s)?'bg-primary text-white':'bg-white text-gray-600 hover:bg-gray-50 border'}`}>

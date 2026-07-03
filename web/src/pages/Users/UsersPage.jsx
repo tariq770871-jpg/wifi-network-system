@@ -199,7 +199,7 @@ export default function UsersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm p-4 border">
           <div className="text-sm text-gray-500">إجمالي المستخدمين</div>
           <div className="text-2xl font-bold text-primary">{users.length}</div>
@@ -215,8 +215,8 @@ export default function UsersPage() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+        <table className="w-full min-w-[800px]">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">المستخدم</th>

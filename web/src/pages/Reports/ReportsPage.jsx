@@ -96,9 +96,9 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
         <div className="p-4 border-b"><h2 className="text-lg font-bold">أداء الفنيين</h2></div>
-        <table className="w-full">
+        <table className="w-full min-w-[700px]">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">الفني</th>

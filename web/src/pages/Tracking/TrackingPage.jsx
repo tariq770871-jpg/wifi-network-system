@@ -70,8 +70,8 @@ export default function TrackingPage() {
         </div>
       </div>
 
-      <div className="flex gap-4" style={{ height: 'calc(100vh - 6rem)' }}>
-        <div className="w-80 bg-white rounded-xl shadow-sm border overflow-auto flex-shrink-0">
+      <div className="flex flex-col lg:flex-row gap-4" style={{ height: 'calc(100vh - 6rem)' }}>
+        <div className="w-full lg:w-80 bg-white rounded-xl shadow-sm border overflow-auto flex-shrink-0 lg:max-h-full max-h-48">
           <div className="p-4 border-b"><h2 className="font-bold">الفنيين</h2></div>
           {technicians.length === 0 ? (
             <div className="p-4 text-center text-gray-500">لا يوجد فنين متصلين</div>
@@ -102,7 +102,7 @@ export default function TrackingPage() {
           )}
         </div>
 
-        <div className="flex-1 bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div className="flex-1 bg-white rounded-xl shadow-sm border overflow-hidden min-h-[300px]">
           <MapContainer center={[24.7136, 46.6753]} zoom={13} style={{ height: '100%', width: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
             {technicians.map((tech) => (
