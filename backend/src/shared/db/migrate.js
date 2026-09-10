@@ -168,6 +168,7 @@ async function migrate() {
         }
         await client.query('COMMIT');
         console.log('🎉 All migrations completed');
+        return true;
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('❌ Migration failed:', err);
@@ -177,8 +178,78 @@ async function migrate() {
     }
 }
 
+// تتبع حالة الـ migration الذاتي عند الإقلاع (يُعرض في /health)
+const migrationState = { status: 'idle', error: null, at: null };
+
+// قفل استشاري موحّد: إذا انطلقت عدة حاويات معاً فالأولى تنفّذ والبقية تتجاوز
+const MIGRATE_LOCK_KEY = 918273645;
+
+/**
+ * تشغيل migrations عند إقلاع الـ serverless (idempotent بالكامل).
+ * يُفعّل بمتغير البيئة RUN_MIGRATIONS=true — تنفيذ واحد لكل حاوية.
+ * حماية من التعليق: pg_try_advisory_lock + lock_timeout — الحاوية التي لا تحصل
+ * على القفل تتجاوز فوراً (الـ DDL idempotent والمخطط سيكتمل من الحاوية الأولى).
+ */
+function runMigrationsOnBoot() {
+    if (process.env.RUN_MIGRATIONS !== 'true') {
+        migrationState.status = 'disabled';
+        return;
+    }
+    if (migrationState.status === 'running' || migrationState.status === 'done') return;
+    migrationState.status = 'running';
+    migrationState.at = new Date().toISOString();
+
+    (async () => {
+        const client = await pool.connect();
+        try {
+            // مهلة قفل قصيرة: إن كان قفل المخطط محتجزاً فلا ننتظر أبداً
+            await client.query('SET lock_timeout = 5000');
+            const lock = await client.query('SELECT pg_try_advisory_lock($1) AS ok', [MIGRATE_LOCK_KEY]);
+            if (!lock.rows[0].ok) {
+                migrationState.status = 'skipped';
+                migrationState.at = new Date().toISOString();
+                console.log('⏭️ Migration skipped — another instance holds the lock');
+                return;
+            }
+            try {
+                // مهلة لكل عبارة DDL: فشل سريع أفضل من تعليق الحاوية
+                await client.query('SET statement_timeout = 60000');
+                // إنقاذ: جلسات DDL عالقة idle-in-transaction (حاوية serverless مجمّدة
+                // قبل COMMIT) تحتجز الأقفال إلى الأبد — تُنهى فقط إذا تجاوزت 3 دقائق
+                // وكان آخر استعلام فيها DDL مخطط (وليس حركة تطبيق عادية)
+                await client.query(`
+                    SELECT pg_terminate_backend(pid)
+                    FROM pg_stat_activity
+                    WHERE state = 'idle in transaction'
+                      AND pid <> pg_backend_pid()
+                      AND xact_start < now() - interval '3 minutes'
+                      AND (query ILIKE 'CREATE TABLE%'
+                        OR query ILIKE 'ALTER TABLE%'
+                        OR query ILIKE 'CREATE INDEX%'
+                        OR query ILIKE 'DO $$%')
+                `).catch(() => {});
+                for (const migration of migrations) {
+                    await client.query(migration);
+                    console.log('✅ Migration applied');
+                }
+                console.log('🎉 All migrations completed');
+                migrationState.status = 'done';
+                migrationState.at = new Date().toISOString();
+            } finally {
+                await client.query('SELECT pg_advisory_unlock($1)', [MIGRATE_LOCK_KEY]).catch(() => {});
+            }
+        } catch (err) {
+            migrationState.status = 'failed';
+            migrationState.error = err.message;
+            console.error('❌ Boot migration failed:', err.message);
+        } finally {
+            client.release();
+        }
+    })();
+}
+
 if (require.main === module) {
     migrate().then(() => process.exit(0)).catch(() => process.exit(1));
 }
 
-module.exports = { migrate };
+module.exports = { migrate, migrationState, runMigrationsOnBoot };

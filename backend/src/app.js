@@ -13,6 +13,7 @@ const config = require('./shared/config');
 const logger = require('./shared/utils/logger');
 const { requestId } = require('./shared/middleware/requestId');
 const { i18n } = require('./shared/i18n');
+const { runMigrationsOnBoot, migrationState } = require('./shared/db/migrate');
 
 const errorHandler = require('./shared/middleware/errorHandler');
 
@@ -29,6 +30,11 @@ const { devicesRoutes } = require('./modules/devices');
 const specs = require('./shared/swagger');
 
 const app = express();
+
+// MIGRATIONS: عند تفعيل RUN_MIGRATIONS=true تعمل ترقيات المخطط (idempotent) مرة
+// واحدة عند إقلاع كل حاوية — تستخدم لدفع تغييرات المخطط إلى قاعدة الإنتاج
+// بدون وصول مباشر، وتُعرض حالتها في /health للتحقق
+runMigrationsOnBoot();
 
 // PROXY: Vercel يضع الطلب خلف وكيل واحد — بدون هذا يرفض express-rate-limit
 // ترويسة X-Forwarded-For (ERR_ERL_UNEXPECTED_X_FORWARDED_FOR) ويفشل تحديد IP المستخدم
@@ -150,10 +156,13 @@ app.get('/health', async (req, res) => {
     const payload = {
         status: 'ok',
         db,
+        // حالة ترقيات المخطط الذاتية (disabled/running/done/failed)
+        migration: migrationState.status,
         timestamp: new Date().toISOString(),
         env: config.env,
         uptime_s: Math.floor(process.uptime()),
     };
+    if (migrationState.error) payload.migration_error = migrationState.error;
     res.status(db === 'ok' ? 200 : 503).json(payload);
 });
 
