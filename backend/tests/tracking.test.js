@@ -145,3 +145,40 @@ describe('Tracking API', () => {
         });
     });
 });
+
+describe('Regression — الواجهة ترسل null صراحة (علّة Invalid value)', () => {
+    let techToken;
+    let adminToken;
+    let techId;
+
+    beforeAll(async () => {
+        const tech = await createAuthenticatedUser({ role: 'technician', prefix: 'nulls' });
+        techToken = tech.token;
+        const me = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${techToken}`);
+        techId = me.body?.data?.id;
+        const admin = await createAuthenticatedUser({ role: 'admin', prefix: 'nulls' });
+        adminToken = admin.token;
+        await request(app)
+            .post(`/api/users/${techId}/tracking`)
+            .set('Authorization', `Bearer ${adminToken}`)
+            .send({ enabled: true });
+    });
+
+    test('log with heading:null + battery:null + signal_dbm:null (exact UI payload) → 200', async () => {
+        const res = await request(app)
+            .post('/api/tracking/log')
+            .set('Authorization', `Bearer ${techToken}`)
+            .send({ lat: 24.7136, lng: 46.6753, heading: null, speed: 0, battery: null, signal_dbm: null });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    test('validation failures never return raw English "Invalid value"', async () => {
+        const res = await request(app)
+            .post('/api/tracking/log')
+            .set('Authorization', `Bearer ${techToken}`)
+            .send({ lat: 999, lng: 46.6, battery: null });
+        expect(res.status).toBe(400);
+        expect(res.body.error).not.toMatch(/Invalid value/i);
+    });
+});

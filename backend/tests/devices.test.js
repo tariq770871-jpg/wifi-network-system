@@ -316,3 +316,41 @@ describe('Devices API (MikroTik integration)', () => {
         });
     });
 });
+
+describe('Regression — نموذج الجهاز يرسل null (علّة Invalid value)', () => {
+    let token;
+
+    beforeAll(async () => {
+        ({ token } = await createAuthenticatedUser({ role: 'admin', prefix: 'nulls' }));
+    });
+
+    test('POST with coordinate_source:null + nulls (no location picked) → 201', async () => {
+        const res = await request(app)
+            .post('/api/devices')
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                name: 'Null-Location-Device',
+                coordinate_source: null,
+                gps_accuracy: null,
+                location_lat: null,
+                location_lng: null,
+            });
+        expect(res.status).toBe(201);
+        expect(res.body.data.coordinate_source).toBe('manual');
+    });
+
+    test('PUT clearing location with nulls (إزالة الموقع) → 200 and cleared', async () => {
+        const created = await request(app)
+            .post('/api/devices')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ name: 'Clear-Loc', location_lat: 24.7, location_lng: 46.6, coordinate_source: 'gps', gps_accuracy: 10 });
+        const id = created.body?.data?.id;
+        const res = await request(app)
+            .put(`/api/devices/${id}`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({ location_lat: null, location_lng: null, coordinate_source: null, gps_accuracy: null });
+        expect(res.status).toBe(200);
+        expect(res.body.data.location_lat).toBeNull();
+        expect(res.body.data.coordinate_source).toBeNull();
+    });
+});
