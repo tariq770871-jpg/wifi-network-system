@@ -33,11 +33,13 @@ export function LocateControl() {
   const [manualMode, setManualMode] = useState(false)
   const [isManual, setIsManual] = useState(false)
   const [lowAccuracy, setLowAccuracy] = useState(false)
+  const [placeName, setPlaceName] = useState(null)
   const markerRef = useRef(null)
   const circleRef = useRef(null)
   const watchIdRef = useRef(null)
   const stopTimerRef = useRef(null)
   const bestRef = useRef(null)
+  const geocodeRef = useRef({ t: 0, lat: null, lng: null })
 
   const stopWatch = () => {
     if (watchIdRef.current !== null) {
@@ -59,11 +61,34 @@ export function LocateControl() {
     markerRef.current.bindTooltip(tooltip, { permanent: false, direction: 'top' })
   }
 
+  /** جلب اسم المدينة والمحافظة من الإحداثيات (Nominatim / OpenStreetMap — بالعربية) */
+  const lookupPlace = async (lat, lng) => {
+    const now = Date.now()
+    const g = geocodeRef.current
+    const movedFar = g.lat === null || Math.abs(lat - g.lat) + Math.abs(lng - g.lng) > 0.05
+    if (g.t && now - g.t < 4000 && !movedFar) return
+    g.t = now
+    g.lat = lat
+    g.lng = lng
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&accept-language=ar`)
+      if (!r.ok) return
+      const d = await r.json()
+      const a = d.address || {}
+      const city = a.city || a.town || a.village || a.municipality || a.county || ''
+      const gov = a.state || a.region || a.state_district || ''
+      const name = [city, gov].filter(Boolean).join(' - ')
+        || (d.display_name ? d.display_name.split(',').slice(0, 2).join(' - ') : '')
+      if (name) setPlaceName(name)
+    } catch { /* الشبكة غير متاحة — يُعاد المحاولة لاحقاً */ }
+  }
+
   const applyFix = (pos) => {
     const { latitude, longitude, accuracy: acc } = pos.coords
     const latlng = [latitude, longitude]
     setIsManual(false)
     setLowAccuracy(acc > 1000)
+    lookupPlace(latitude, longitude)
     // تكبير مناسب لمستوى الدقة: دقيق → أقرب، تقريبي → أوسع
     const zoom = acc < 30 ? 18 : acc < 100 ? 16 : acc < 500 ? 14 : 12
     map.flyTo(latlng, zoom, { duration: 1.2 })
@@ -109,6 +134,8 @@ export function LocateControl() {
     try {
       localStorage.setItem(MANUAL_POS_KEY, JSON.stringify({ lat, lng }))
     } catch { /* التخزين غير متاح */ }
+    setPlaceName(null)
+    lookupPlace(lat, lng)
   }
 
   // استعادة الموقع اليدوي المحفوظ عند فتح الخريطة
@@ -137,6 +164,16 @@ export function LocateControl() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manualMode, map])
 
+  // إظهار اسم المدينة/المحافظة في تلميح العلامة عند توفره
+  useEffect(() => {
+    if (!placeName || !markerRef.current) return
+    const base = isManual
+      ? 'موقعي (محدد يدوياً)'
+      : accuracy !== null && accuracy <= 20 ? 'موقعك الحالي (دقة عالية)'
+        : `دقة التحديد: ±${accuracy} متر`
+    markerRef.current.bindTooltip(`${base}<br/>${placeName}`, { permanent: false, direction: 'top' })
+  }, [placeName, isManual, accuracy])
+
   const handleLocate = () => {
     if (!navigator.geolocation) {
       setError('متصفحك لا يدعم تحديد الموقع الجغرافي')
@@ -145,6 +182,7 @@ export function LocateControl() {
     setLocating(true)
     setError(null)
     setManualMode(false)
+    setPlaceName(null)
     bestRef.current = null
 
     // المرحلة 1: إصلاح أولي سريع للانتقال للموقع
@@ -228,6 +266,15 @@ export function LocateControl() {
             {accuracy <= 20 ? '✓ موقع دقيق' : accuracy <= 100 ? 'دقة جيدة' : 'دقة تقريبية'}: ±{accuracy}م
           </div>
         )}
+        {/* اسم المدينة والمحافظة */}
+        {located && placeName && (
+          <div
+            className="leaflet-control mt-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur rounded-lg shadow border border-gray-200 dark:border-gray-700 px-2.5 py-1 text-xs font-semibold text-gray-800 dark:text-gray-100 whitespace-nowrap"
+            style={{ maxWidth: 240 }}
+          >
+            <MapPin size={11} className="inline mb-0.5" /> {placeName}
+          </div>
+        )}
         {/* تحذير الدقة المتدنية: تقدير شبكة/IP وليس GPS */}
         {lowAccuracy && !isManual && !locating && (
           <div
@@ -282,22 +329,29 @@ export function LocateControl() {
   )
 }
 
-/** Layer toggle button - switches between street and satellite */
+/** Layer toggle button - switches between street (Arabic names) and satellite (imagery + city labels) */
 export function LayerToggle() {
   const map = useMap()
   const [satellite, setSatellite] = useState(false)
   const streetRef = useRef(null)
   const satRef = useRef(null)
+  const satLabelsRef = useRef(null)
 
   useEffect(() => {
-    // Street layer (OpenStreetMap)
+    // Street layer (OpenStreetMap) — يعرض أسماء المدن والمحافظات بالعربية
     streetRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap',
       maxZoom: 19,
     }).addTo(map)
 
-    // Satellite layer (ESRI World Imagery)
+    // Satellite imagery (ESRI World Imagery)
     satRef.current = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '&copy; Esri',
+      maxZoom: 19,
+    })
+
+    // أسماء المدن والحدود الإدارية فوق صور الأقمار الصناعية (hybrid)
+    satLabelsRef.current = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
       attribution: '&copy; Esri',
       maxZoom: 19,
     })
@@ -305,16 +359,19 @@ export function LayerToggle() {
     return () => {
       streetRef.current?.remove()
       satRef.current?.remove()
+      satLabelsRef.current?.remove()
     }
   }, [map])
 
   const toggle = () => {
     if (satellite) {
       map.removeLayer(satRef.current)
+      map.removeLayer(satLabelsRef.current)
       streetRef.current.addTo(map)
     } else {
       map.removeLayer(streetRef.current)
       satRef.current.addTo(map)
+      satLabelsRef.current.addTo(map)
     }
     setSatellite(prev => !prev)
   }
@@ -329,7 +386,7 @@ export function LayerToggle() {
               ? 'text-primary bg-blue-50 dark:bg-blue-500/10'
               : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
           }`}
-          title={satellite ? 'خريطة شوارع' : 'أقمار صناعية'}
+          title={satellite ? 'خريطة شوارع — أسماء عربية' : 'أقمار صناعية + أسماء المدن'}
         >
           {satellite ? <MapIcon size={16} /> : <Satellite size={16} />}
           <span className="hidden sm:inline">{satellite ? 'شوارع' : 'فضائي'}</span>
