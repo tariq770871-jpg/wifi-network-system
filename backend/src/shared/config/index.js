@@ -15,7 +15,7 @@ const config = {
     },
     jwt: {
         secret: process.env.JWT_SECRET,
-        expiresIn: '24h',
+        expiresIn: '7d',
     },
     cors: {
         get origins() {
