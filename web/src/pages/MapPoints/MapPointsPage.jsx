@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { mapPointsApi } from '../../services/mapPoints.service'
 import { useAuthStore } from '../../hooks/useAuth'
-import { MapContainer, Marker, Popup } from 'react-leaflet'
-import { Check, X, MapPin, Clock, Loader2, Inbox, Map } from 'lucide-react'
+import { MapContainer, Marker, Popup, useMapEvents } from 'react-leaflet'
+import { Check, X, MapPin, Clock, Loader2, Inbox, Map, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import L from '../../lib/leaflet-setup'
 import { LocateControl, LayerToggle } from '../../components/MapControls'
@@ -15,10 +15,32 @@ const statusColors = {
 }
 const statusLabels = { pending: 'بانتظار الموافقة', approved: 'معتمد', rejected: 'مرفوض' }
 
+// دبوس أحمر مؤقت لموضع النقطة الجديدة قبل الحفظ
+const newPointIcon = L.divIcon({
+  html: `<div style="width:20px;height:20px;background:#EF4444;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(239,68,68,0.5);"></div>`,
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+  className: '',
+})
+
+/** يلتقط النقر على الخريطة أثناء وضع الإضافة */
+function MapClickCatcher({ active, onSelect }) {
+  useMapEvents({
+    click: (e) => {
+      if (active) onSelect({ lat: e.latlng.lat, lng: e.latlng.lng })
+    },
+  })
+  return null
+}
+
 export default function MapPointsPage() {
   const { user } = useAuthStore()
   const canReview = user?.role === 'admin' || user?.role === 'support'
   const [filter, setFilter] = useState('pending')
+  const [addMode, setAddMode] = useState(false)
+  const [newPoint, setNewPoint] = useState(null)
+  const [name, setName] = useState('')
+  const [note, setNote] = useState('')
   const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ['map-points', filter],
@@ -34,6 +56,32 @@ export default function MapPointsPage() {
     onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
   })
 
+  const createMutation = useMutation({
+    mutationFn: (payload) => mapPointsApi.create(payload),
+    onSuccess: (resp) => {
+      queryClient.invalidateQueries({ queryKey: ['map-points'] })
+      toast.success(resp?.message || 'تمت إضافة النقطة بنجاح')
+      setNewPoint(null)
+      setName('')
+      setNote('')
+      setAddMode(false)
+    },
+    onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ أثناء الإضافة'),
+  })
+
+  const submitNewPoint = () => {
+    if (!name.trim()) {
+      toast.error('اسم النقطة مطلوب')
+      return
+    }
+    createMutation.mutate({
+      name: name.trim(),
+      note: note.trim() || undefined,
+      location_lat: newPoint.lat,
+      location_lng: newPoint.lng,
+    })
+  }
+
   const points = Array.isArray(data?.data) ? data.data : []
   const approvedPoints = points.filter(p => p.status === 'approved')
 
@@ -45,9 +93,23 @@ export default function MapPointsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">نقاط الخريطة</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">إدارة ومراجعة نقاط الشبكة على الخريطة</p>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">نقاط الخريطة</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">إدارة ومراجعة نقاط الشبكة على الخريطة</p>
+        </div>
+        <button
+          onClick={() => { setAddMode((m) => !m); setNewPoint(null) }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm ${
+            addMode
+              ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/25'
+              : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/25'
+          }`}
+        >
+          {addMode ? <X size={15} /> : <Plus size={15} />}
+          {addMode ? 'إلغاء وضع الإضافة' : 'إضافة نقطة / جهاز'}
+        </button>
       </div>
 
       {/* Stats */}
@@ -159,10 +221,17 @@ export default function MapPointsPage() {
         </div>
 
         {/* Map */}
-        <div className="card overflow-hidden h-[500px]">
+        <div className="card overflow-hidden h-[500px] relative">
+          {addMode && (
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-amber-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
+              {newPoint ? 'أكمل البيانات في النموذج' : 'انقر على الخريطة في موضع النقطة الجديدة'}
+            </div>
+          )}
           <MapContainer center={[24.7136, 46.6753]} zoom={13} style={{ height: '100%', width: '100%' }} className="z-10">
+            <MapClickCatcher active={addMode && !newPoint} onSelect={setNewPoint} />
             <LocateControl />
             <LayerToggle />
+            {newPoint && <Marker position={[newPoint.lat, newPoint.lng]} icon={newPointIcon} />}
             {approvedPoints.filter(p => p.location_lat && p.location_lng).map(p => (
               <Marker key={p.id} position={[p.location_lat, p.location_lng]}>
                 <Popup>
@@ -176,6 +245,57 @@ export default function MapPointsPage() {
           </MapContainer>
         </div>
       </div>
+
+      {/* Add Point Modal */}
+      {newPoint && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setNewPoint(null)}>
+          <div className="card p-6 w-full max-w-md bg-white dark:bg-gray-800" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 dark:text-white">إضافة نقطة / جهاز جديد</h3>
+              <button onClick={() => setNewPoint(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" aria-label="إغلاق">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg px-3 py-2">
+              <MapPin size={12} className="text-red-500" />
+              <span>الإحداثيات: {newPoint.lat.toFixed(5)}, {newPoint.lng.toFixed(5)}</span>
+            </div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">اسم النقطة / الجهاز *</label>
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submitNewPoint()}
+              placeholder="مثال: راوتر حي النزهة"
+              className="input-field w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-gray-400 mb-4"
+            />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">ملاحظات (اختياري)</label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+              placeholder="وصف الموقع، نوع الجهاز، حالة التغطية..."
+              className="input-field w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-gray-400 mb-5 resize-none"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={submitNewPoint}
+                disabled={createMutation.isPending || !name.trim()}
+                className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-emerald-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {createMutation.isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                حفظ النقطة
+              </button>
+              <button
+                onClick={() => setNewPoint(null)}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

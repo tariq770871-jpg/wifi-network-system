@@ -7,7 +7,7 @@
  * - API: Network First (مع fallback عند انقطاع الشبكة)
  * - لا نكاشي أبداً: /api/auth (أمان)
  */
-const CACHE_NAME = 'wifi-dashboard-v4';
+const CACHE_NAME = 'wifi-dashboard-v5';
 const APP_SHELL = ['/manifest.webmanifest', '/logo.svg'];
 
 self.addEventListener('install', (event) => {

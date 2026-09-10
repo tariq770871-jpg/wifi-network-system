@@ -42,14 +42,14 @@ class MapPointsService {
         return result.rows[0];
     }
 
-    static async create({ name, note, location_lat, location_lng }, createdBy) {
+    static async create({ name, note, location_lat, location_lng }, createdBy, initialStatus = 'pending') {
         if (!name || name.trim() === '') {
             throw { statusCode: 400, message: 'الاسم إلزامي' };
         }
 
         const result = await query(
             'INSERT INTO map_points (name, note, location_lat, location_lng, created_by, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [name, note, location_lat, location_lng, createdBy, 'pending']
+            [name, note, location_lat, location_lng, createdBy, initialStatus]
         );
 
         return result.rows[0];

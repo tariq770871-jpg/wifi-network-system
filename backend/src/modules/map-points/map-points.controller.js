@@ -97,8 +97,10 @@ const getById = async (req, res) => {
  */
 const create = async (req, res) => {
     try {
-        const point = await MapPointsService.create(req.body, req.user.id);
-        success(res, point, 'تم إرسال الطلب بنجاح - بانتظار موافقة الإدارة');
+        // الإدارة والدعم تُعتمد نقاطهم تلقائياً — الفنيون يمررونها للمراجعة
+        const initialStatus = ['admin', 'support'].includes(req.user.role) ? 'approved' : 'pending';
+        const point = await MapPointsService.create(req.body, req.user.id, initialStatus);
+        success(res, point, initialStatus === 'approved' ? 'تمت إضافة النقطة واعتمادها على الخريطة' : 'تم إرسال الطلب بنجاح - بانتظار موافقة الإدارة');
     } catch (err) {
         respondError(req, res, err);
     }

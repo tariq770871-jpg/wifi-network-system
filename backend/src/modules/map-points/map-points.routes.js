@@ -26,7 +26,7 @@ router.post('/',
     ],
     validateRequest,
     authenticate,
-    authorize('technician'),
+    authorize('technician', 'admin', 'support'),
     create
 );
 router.post('/:id/review',
