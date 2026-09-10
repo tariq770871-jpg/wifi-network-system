@@ -165,7 +165,7 @@ jobs:
           test -f dist/logo.svg && echo "✅ logo OK"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-dist
           path: web/dist
@@ -254,7 +254,7 @@ jobs:
         working-directory: web
         run: E2E_NO_SERVER=1 npx playwright test
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
