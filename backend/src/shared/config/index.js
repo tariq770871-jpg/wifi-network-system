@@ -9,7 +9,8 @@ const config = {
         pool: {
             max: 20,
             idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 2000,
+            // 10s: واقعي للاتصالات TLS عبر Pooler السحابي (Supabase/Neon) من مناطق بعيدة
+            connectionTimeoutMillis: 10000,
         },
     },
     jwt: {
