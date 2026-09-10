@@ -210,3 +210,72 @@ docker compose down -v          # إيقاف + حذف البيانات ⚠️
 | HTTPS | تلقائي | يحتاج إعداد |
 | التحكم الكامل | لا | نعم |
 | تكامل MikroTik | يعمل (API صادر) | يعمل (نفس الشبكة مثالياً) |
+
+---
+
+## الخيار السحابي الكامل: Supabase + Vercel (موصى به)
+
+بنية: قاعدة بيانات PostgreSQL على **Supabase** + API على **Vercel Serverless** + لوحة الويب على **Vercel Static**.
+
+### الخطوة 1: قاعدة البيانات على Supabase
+
+1. أنشئ مشروعاً مجانياً على [supabase.com](https://supabase.com) → **New project**
+2. احفظ كلمة مرور قاعدة البيانات عند إنشائها
+3. خذ رابط الاتصال من: **Project Settings → Database → Connection string → URI**
+4. ستحتاج رابطين:
+   - **للترحيلات** (اتصال مباشر، منفذ 5432):
+     `postgresql://postgres:[كلمة-المرور]@db.[REF].supabase.co:5432/postgres`
+   - **للـ API على Vercel** (Transaction Pooler، منفذ 6543 — يمنع استنفاد الاتصالات في Serverless):
+     `postgresql://postgres.[REF]:[كلمة-المرور]@aws-0-[REGION].pooler.supabase.com:6543/postgres`
+5. طبّق الترحيلات وأنشئ أول مدير:
+   ```bash
+   cd backend
+   DATABASE_URL="رابط-5432" NODE_ENV=production npm run migrate
+   DATABASE_URL="رابط-5432" NODE_ENV=production npm run seed
+   ```
+
+### الخطوة 2: الـ API على Vercel (Serverless)
+
+> ملفات الجاهزية موجودة: `backend/api/index.js` (نقطة الدخول) + `backend/vercel.json`
+
+```bash
+npm i -g vercel
+cd backend
+vercel link --yes --project wifi-network-api
+vercel env add DATABASE_URL production     # الصق رابط الـ Pooler (6543)
+vercel env add JWT_SECRET production       # 48 حرفاً عشوائياً على الأقل
+vercel env add MIKROTIK_ENCRYPTION_KEY production  # 32 حرفاً عشوائياً
+vercel env add ALLOWED_ORIGINS production  # رابط الويب بعد نشره (خطوة 3)
+vercel deploy --prod --yes
+```
+
+ملاحظات:
+- `NODE_ENV=production` يضبطه Vercel تلقائياً → **SSL لقاعدة البيانات يُفعَّل ذاتياً**
+- **Socket.IO لا يعمل على Serverless** (REST يعمل كاملاً) — العميل متصل بـ `autoConnect:false` فيتحلل الأداء بأمان. لو احتجت التحديث الحي لاحقاً انشر الـ API على Render.
+
+### الخطوة 3: لوحة الويب على Vercel (Static + SPA)
+
+```bash
+cd web
+vercel link --yes --project wifi-network-web
+vercel env add VITE_API_URL production     # https://wifi-network-api.vercel.app
+vercel deploy --prod --yes
+```
+
+`web/vercel.json` يضم إعادة توجيه SPA + ترويسات PWA الصحيحة.
+
+### الخطوة 4: شدّ CORS ثم أعد نشر الـ API
+
+```bash
+cd backend
+vercel env add ALLOWED_ORIGINS production   # https://wifi-network-web.vercel.app
+vercel deploy --prod --yes
+```
+
+### النتيجة
+
+| الخدمة | المزود | الرابط |
+|---|---|---|
+| PostgreSQL | Supabase | داخلي |
+| API + Swagger | Vercel | https://wifi-network-api.vercel.app/health |
+| Web PWA | Vercel | https://wifi-network-web.vercel.app |
