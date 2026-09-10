@@ -1,21 +1,22 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../hooks/useAuth'
 import { LayoutDashboard, Ticket, MapPin, Map, BarChart3, LogOut, Menu, Settings, Users as UsersIcon, X, Sun, Moon, Bell, ChevronLeft, Search } from 'lucide-react'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useContext } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { socket } from '../services/socketClient'
+import { socket, REALTIME_ENABLED } from '../services/socketClient'
+import { LangContext } from '../i18n'
 
 const THEME_KEY = 'theme'
 
 const allNavItems = [
-  { path: '/', label: 'الرئيسية', icon: LayoutDashboard, roles: ['admin','support','technician'] },
-  { path: '/tickets', label: 'البلاغات', icon: Ticket, roles: ['admin','support','technician'] },
-  { path: '/tracking', label: 'التتبع الحي', icon: MapPin, roles: ['admin','support'] },
-  { path: '/map-points', label: 'نقاط الخريطة', icon: Map, roles: ['admin','support','technician'] },
-  { path: '/reports', label: 'التقارير', icon: BarChart3, roles: ['admin','support'] },
-  { path: '/users', label: 'المستخدمين', icon: UsersIcon, roles: ['admin'] },
-  { path: '/settings', label: 'الإعدادات', icon: Settings, roles: ['admin','support','technician'] },
+  { path: '/', labelKey: 'nav.home', icon: LayoutDashboard, roles: ['admin','support','technician'] },
+  { path: '/tickets', labelKey: 'nav.tickets', icon: Ticket, roles: ['admin','support','technician'] },
+  { path: '/tracking', labelKey: 'nav.tracking', icon: MapPin, roles: ['admin','support'] },
+  { path: '/map-points', labelKey: 'nav.mapPoints', icon: Map, roles: ['admin','support','technician'] },
+  { path: '/reports', labelKey: 'nav.reports', icon: BarChart3, roles: ['admin','support'] },
+  { path: '/users', labelKey: 'nav.users', icon: UsersIcon, roles: ['admin'] },
+  { path: '/settings', labelKey: 'nav.settings', icon: Settings, roles: ['admin','support','technician'] },
 ]
 
 function getInitialThemeMode() {
@@ -27,6 +28,7 @@ function getInitialThemeMode() {
 
 export default function Layout() {
   const { user, logout } = useAuthStore()
+  const { t, lang, setLang } = useContext(LangContext)
   const location = useLocation()
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== 'undefined' ? window.innerWidth >= 1024 : false
@@ -89,12 +91,20 @@ export default function Layout() {
     setNotifications(prev => [{ id: Date.now(), text: message, read: false, time: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) }, ...prev].slice(0, 50))
   }, [])
 
-  // Socket.IO connection
+  // Realtime updates: Socket.IO عند توفره، وإلا تحديث دوري آمن للـ Serverless
   useEffect(() => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-    if (!token || !user) {
+    if (!user) {
       socket.disconnect()
       return
+    }
+
+    // بديل Serverless (Vercel): لا WebSocket — نحدّث البيانات دورياً بدلاً من الاتصال الفاشل
+    if (!REALTIME_ENABLED) {
+      const interval = setInterval(() => {
+        queryClient.invalidateQueries({ queryKey: ['tickets'] })
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      }, 60000)
+      return () => clearInterval(interval)
     }
 
     socket.connect()
@@ -127,6 +137,8 @@ export default function Layout() {
   const unreadCount = notifications.filter(n => !n.read).length
 
   const currentPage = allNavItems.find(i => i.path === location.pathname)
+  const roleLabel = userRole === 'admin' ? t('app.role.admin') : userRole === 'support' ? t('app.role.support') : t('app.role.technician')
+  const roleShort = userRole === 'admin' ? t('app.role.adminShort') : userRole === 'support' ? t('app.role.support') : t('app.role.technician')
 
   return (
     <div className="flex h-screen bg-surface dark:bg-surface-dark">
@@ -171,10 +183,11 @@ export default function Layout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-3 px-3 space-y-1 overflow-y-auto">
+        <nav aria-label={t('nav.sidebar')} className="flex-1 py-3 px-3 space-y-1 overflow-y-auto">
           {navItems.map(item => {
             const Icon = item.icon
             const isActive = location.pathname === item.path
+            const label = t(item.labelKey)
             return (
               <Link
                 key={item.path}
@@ -187,7 +200,7 @@ export default function Layout() {
                 }`}
               >
                 <Icon size={19} className={isActive ? '' : 'group-hover:scale-110 transition-transform'} />
-                {(sidebarOpen || !isDesktop) && <span>{item.label}</span>}
+                {(sidebarOpen || !isDesktop) && <span>{label}</span>}
                 {isActive && !sidebarOpen && isDesktop && (
                   <div className="absolute right-0 w-1 h-6 bg-primary rounded-l-full" />
                 )}
@@ -217,13 +230,13 @@ export default function Layout() {
               {showNotifPanel && (
                 <div className="absolute bottom-full right-0 mb-2 w-80 card p-0 z-50 animate-fade-in-scale overflow-hidden">
                   <div className="flex items-center justify-between p-3.5 border-b border-gray-100 dark:border-gray-700/50">
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">الإشعارات</h3>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">{t('app.notifications')}</h3>
                     {unreadCount > 0 && (
                       <button
                         onClick={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
                         className="text-xs text-primary hover:underline font-medium"
                       >
-                        تعيين الكل كمقروء
+                        {t('app.readAll')}
                       </button>
                     )}
                   </div>
@@ -231,7 +244,7 @@ export default function Layout() {
                     {notifications.length === 0 ? (
                       <div className="p-6 text-center">
                         <Bell size={24} className="text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                        <p className="text-xs text-gray-400 dark:text-gray-500">لا توجد إشعارات</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">{t('app.noNotifications')}</p>
                       </div>
                     ) : (
                       notifications.slice(0, 20).map(n => (
@@ -250,13 +263,22 @@ export default function Layout() {
             </div>
           )}
 
+          {/* Language toggle */}
+          <button
+            onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white`}
+          >
+            <span className="w-[19px] text-center text-xs font-bold" aria-hidden="true">{lang === 'ar' ? 'EN' : 'ع'}</span>
+            {(sidebarOpen || !isDesktop) && <span>{lang === 'ar' ? 'English' : 'العربية'}</span>}
+          </button>
+
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white`}
           >
             {resolvedTheme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
-            {(sidebarOpen || !isDesktop) && <span>{resolvedTheme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}</span>}
+            {(sidebarOpen || !isDesktop) && <span>{resolvedTheme === 'dark' ? t('app.theme.light') : t('app.theme.dark')}</span>}
           </button>
 
           {/* User info */}
@@ -267,15 +289,13 @@ export default function Layout() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate text-gray-900 dark:text-white">{user?.full_name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {userRole === 'admin' ? 'مدير النظام' : userRole === 'support' ? 'دعم فني' : 'فني'}
-                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{roleLabel}</p>
               </div>
               <button
                 onClick={logout}
                 className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
-                title="تسجيل الخروج"
-                aria-label="تسجيل الخروج"
+                title={t('app.logout')}
+                aria-label={t('app.logout')}
               >
                 <LogOut size={16} />
               </button>
@@ -319,7 +339,7 @@ export default function Layout() {
               <button
                 onClick={() => setShowNotifPanel(!showNotifPanel)}
                 className="relative p-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
-                aria-label="الإشعارات"
+                aria-label={t('app.notifications')}
                 aria-expanded={showNotifPanel}
               >
                 <Bell size={19} />
@@ -334,7 +354,7 @@ export default function Layout() {
                     <div className="flex items-center justify-between p-3.5 border-b border-gray-100 dark:border-gray-700/50">
                       <div className="flex items-center gap-2">
                         <Bell size={16} className="text-primary" />
-                        <h3 className="text-sm font-bold text-gray-900 dark:text-white">الإشعارات</h3>
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white">{t('app.notifications')}</h3>
                         {unreadCount > 0 && (
                           <span className="text-[10px] font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
                             {unreadCount}
@@ -346,7 +366,7 @@ export default function Layout() {
                           onClick={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
                           className="text-xs text-primary hover:underline font-medium"
                         >
-                          قراءة الكل
+                          {t('app.readAll')}
                         </button>
                       )}
                     </div>
@@ -354,7 +374,7 @@ export default function Layout() {
                       {notifications.length === 0 ? (
                         <div className="p-8 text-center">
                           <Bell size={28} className="text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                          <p className="text-sm text-gray-400 dark:text-gray-500">لا توجد إشعارات جديدة</p>
+                          <p className="text-sm text-gray-400 dark:text-gray-500">{t('app.noNotifications')}</p>
                         </div>
                       ) : (
                         notifications.slice(0, 20).map(n => (
@@ -388,7 +408,7 @@ export default function Layout() {
                 <div className="hidden xl:block">
                   <p className="text-sm font-medium text-gray-900 dark:text-white leading-tight">{user?.full_name}</p>
                   <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                    {userRole === 'admin' ? 'مدير' : userRole === 'support' ? 'دعم فني' : 'فني'}
+                    {roleShort}
                   </p>
                 </div>
               )}

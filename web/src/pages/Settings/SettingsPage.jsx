@@ -51,8 +51,7 @@ export default function SettingsPage() {
       toast.success('تم تحديث الملف الشخصي بنجاح')
       const updated = res?.data
       if (updated) {
-        const storage = localStorage.getItem('token') ? localStorage : sessionStorage
-        storage.setItem('user', JSON.stringify({ ...user, ...updated }))
+        localStorage.setItem('user', JSON.stringify({ ...user, ...updated }))
         useAuthStore.setState({ user: { ...user, ...updated } })
       }
       queryClient.invalidateQueries({ queryKey: ['me'] })

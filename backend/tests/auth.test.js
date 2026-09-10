@@ -46,6 +46,38 @@ describe('Auth API', () => {
                 .send({ username: 'nonexistent', password: 'wrong' });
             expect(res.status).toBe(401);
         });
+
+        test('sets HttpOnly session cookie on login', async () => {
+            // إنشاء مستخدم حقيقي ثم دخول للتحقق من كوكي الجلسة الآمن
+            await request(app)
+                .post('/api/auth/register')
+                .send({ username: 'cookie_user', password: 'password123', full_name: 'Cookie Test' });
+
+            const res = await request(app)
+                .post('/api/auth/login')
+                .send({ username: 'cookie_user', password: 'password123', remember: false });
+            expect(res.status).toBe(200);
+
+            const cookie = res.headers['set-cookie']?.find(c => c.startsWith('token='));
+            expect(cookie).toBeDefined();
+            expect(cookie).toMatch(/HttpOnly/i);
+            expect(cookie).toMatch(/SameSite=Lax/i); // NODE_ENV=test → Lax
+            expect(cookie).not.toMatch(/Max-Age/i); // بلا remember = كوكي جلسة
+
+            // الكوكي وحده يكفي للمصادقة (بدون ترويسة Authorization)
+            const meRes = await request(app)
+                .get('/api/auth/me')
+                .set('Cookie', cookie.split(';')[0]);
+            expect(meRes.status).toBe(200);
+            expect(meRes.body.data.username).toBe('cookie_user');
+        });
+
+        test('logout clears the auth cookie', async () => {
+            const res = await request(app).post('/api/auth/logout');
+            expect(res.status).toBe(200);
+            const cookie = res.headers['set-cookie']?.find(c => c.startsWith('token='));
+            expect(cookie).toMatch(/token=;/);
+        });
     });
 
     describe('GET /api/auth/me', () => {

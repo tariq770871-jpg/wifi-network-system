@@ -21,7 +21,13 @@ const config = {
         get origins() {
             const raw = process.env.ALLOWED_ORIGINS;
             if (!raw || raw.trim() === '') {
-                // No origins specified = allow all (works in all environments)
+                // SECURITY: في الإنتاج يُمنع السماح بكل المصادر — لا بد من قائمة صريحة
+                // (allow-all مع credentials يفتح باب هجمات CSRF/CORS من أي موقع)
+                if ((process.env.NODE_ENV || 'development') === 'production') {
+                    console.error('FATAL: ALLOWED_ORIGINS مطلوب في الإنتاج (قائمة أصول مفصولة بفواصل) — رفض بدء التشغيل');
+                    process.exit(1);
+                }
+                console.warn('[WARN] ALLOWED_ORIGINS فارغ — السماح بكل المصادر (تطوير فقط)');
                 return true;
             }
             return raw.split(',').map(o => o.trim()).filter(Boolean);

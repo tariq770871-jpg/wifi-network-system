@@ -6,6 +6,8 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 const swaggerUi = require('swagger-ui-express');
 const config = require('./shared/config');
 const logger = require('./shared/utils/logger');
@@ -27,6 +29,10 @@ const { devicesRoutes } = require('./modules/devices');
 const specs = require('./shared/swagger');
 
 const app = express();
+
+// PROXY: Vercel يضع الطلب خلف وكيل واحد — بدون هذا يرفض express-rate-limit
+// ترويسة X-Forwarded-For (ERR_ERL_UNEXPECTED_X_FORWARDED_FOR) ويفشل تحديد IP المستخدم
+app.set('trust proxy', 1);
 
 // SECURITY: حماية HTTP headers (XSS، clickjacking، sniffing...)
 app.use(helmet({
@@ -56,6 +62,27 @@ const io = new Server(server, {
   },
 });
 
+// SECURITY: مصادقة إلزامية على مصافحة Socket.IO — لا اتصالات مجهولة
+// يقبل: handshake.auth.token أو ترويسة Authorization أو كوكي الجلسة HttpOnly
+io.use((socket, next) => {
+  try {
+    const bearer = (socket.handshake.headers?.authorization || '').replace(/^Bearer\s+/i, '');
+    let cookieToken = null;
+    const rawCookie = socket.handshake.headers?.cookie;
+    if (rawCookie) {
+      const match = /(?:^|;\s*)token=([^;]+)/.exec(rawCookie);
+      if (match) cookieToken = decodeURIComponent(match[1]);
+    }
+    const token = socket.handshake.auth?.token || bearer || cookieToken;
+    if (!token) return next(new Error('unauthorized'));
+    const payload = jwt.verify(token, config.jwt.secret);
+    socket.data.user = { userId: payload.userId, username: payload.username, role: payload.role };
+    next();
+  } catch {
+    next(new Error('unauthorized'));
+  }
+});
+
 // Make io accessible in routes/controllers via req.io
 app.use((req, res, next) => {
   req.io = io;
@@ -64,20 +91,20 @@ app.use((req, res, next) => {
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log('Socket connected:', socket.id);
+  const { role } = socket.data.user || {};
 
   socket.on('join_room', (room) => {
+    // SECURITY: يُسمح بالانضمام لغرفة دوره فقط — لا انتحال غرف admin/support
+    if (typeof room !== 'string' || room !== role) return;
     socket.join(room);
-    console.log(`Socket ${socket.id} joined room: ${room}`);
   });
 
   socket.on('leave_room', (room) => {
-    socket.leave(room);
-    console.log(`Socket ${socket.id} left room: ${room}`);
+    if (typeof room === 'string' && room === role) socket.leave(room);
   });
 
   socket.on('disconnect', () => {
-    console.log('Socket disconnected:', socket.id);
+    /* تنظيف تلقائي */
   });
 });
 
@@ -102,6 +129,7 @@ app.use(limiter);
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Logging: morgan يمر عبر الـ logger المنظم مع request-id
 morgan.token('id', (req) => req.id);

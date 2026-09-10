@@ -2,15 +2,11 @@ import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
-function getToken() {
-  return localStorage.getItem('token') || sessionStorage.getItem('token')
-}
-
+// SECURITY: التوكن لا يُخزن في JS إطلاقاً — كوكي HttpOnly يضبطه الخادم تلقائياً
+// (محصّن ضد سرقة XSS). نحفظ فقط بيانات العرض غير الحساسة (الاسم/الدور).
 function clearAuth() {
-  localStorage.removeItem('token')
   localStorage.removeItem('user')
   localStorage.removeItem('saved_username')
-  sessionStorage.removeItem('token')
   sessionStorage.removeItem('user')
 }
 
@@ -20,20 +16,14 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 15000,
-})
-
-api.interceptors.request.use((config) => {
-  const token = getToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
+  // إرسال/استقبال كوكي الجلسة مع كل طلب (نفس الموقع عبر Vite proxy، وعبر النطاق مع CORS صريح)
+  withCredentials: true,
 })
 
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !window.location.pathname.startsWith('/login')) {
       clearAuth()
       window.location.href = '/login'
     }

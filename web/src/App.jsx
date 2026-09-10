@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import ErrorBoundary from './components/ErrorBoundary'
+import LangProvider from './components/LangProvider'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import { useAuthStore } from './hooks/useAuth'
@@ -49,33 +50,35 @@ function NotFoundPage() {
 function App() {
   return (
     <ErrorBoundary>
-      <Toaster position="top-left" toastOptions={{ duration: 3000 }} />
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/tickets" element={<TicketsPage />} />
-              <Route
-                path="/tracking"
-                element={<RoleRoute roles={['admin', 'support']}><TrackingPage /></RoleRoute>}
-              />
-              <Route path="/map-points" element={<MapPointsPage />} />
-              <Route
-                path="/reports"
-                element={<RoleRoute roles={['admin', 'support']}><ReportsPage /></RoleRoute>}
-              />
-              <Route
-                path="/users"
-                element={<RoleRoute roles={['admin']}><UsersPage /></RoleRoute>}
-              />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<NotFoundPage />} />
+      <LangProvider>
+        <Toaster position="top-left" toastOptions={{ duration: 3000 }} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<Layout />}>
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/tickets" element={<TicketsPage />} />
+                <Route
+                  path="/tracking"
+                  element={<RoleRoute roles={['admin', 'support']}><TrackingPage /></RoleRoute>}
+                />
+                <Route path="/map-points" element={<MapPointsPage />} />
+                <Route
+                  path="/reports"
+                  element={<RoleRoute roles={['admin', 'support']}><ReportsPage /></RoleRoute>}
+                />
+                <Route
+                  path="/users"
+                  element={<RoleRoute roles={['admin']}><UsersPage /></RoleRoute>}
+                />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
-      </Suspense>
+          </Routes>
+        </Suspense>
+      </LangProvider>
     </ErrorBoundary>
   )
 }

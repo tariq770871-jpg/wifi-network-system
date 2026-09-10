@@ -53,7 +53,22 @@ cd backend
 NODE_ENV=test npx jest --runInBand
 ```
 
-حالياً: **65 اختباراً في 9 حزم** (auth, users, tickets, tracking, map-points, health, devices+MikroTik, security, signal+networks)
+حالياً: **67 اختباراً في 9 حزم** (auth+كوكيز الجلسة, users, tickets, tracking, map-points, health, devices+MikroTik, security, signal+networks)
+
+### حزمة اختبار Docker بأمر واحد
+```bash
+./scripts/test.sh
+# أو: docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from tests
+```
+تشغّل PostgreSQL + الترحيلات + كل الاختبارات معزولة ثم تخرج بكود النجاح/الفشل.
+
+### اختبارات E2E (Playwright)
+```bash
+cd web
+npx playwright install chromium   # مرة واحدة
+npx playwright test              # يتطلب API على :3000 (أو CI يشغّلها تلقائياً)
+```
+تغطي: عرض نموذج الدخول، حماية المسارات، الدخول عبر كوكي HttpOnly، رسائل الخطأ، وظيفة إضافة نقطة الخريطة.
 
 ## CI/CD
 

@@ -4,7 +4,9 @@ const config = require('../config');
 
 const authenticate = async (req, res, next) => {
     try {
-        const token = req.headers.authorization?.split(' ')[1];
+        // يدعم: ترويسة Authorization (تطبيق الجوال/الاختبارات) أو كوكي HttpOnly (الواجهة)
+        const headerToken = req.headers.authorization?.split(' ')[1];
+        const token = headerToken || req.cookies?.token;
         if (!token) {
             return res.status(401).json({ success: false, error: 'لم يتم توفير رمز المصادقة' });
         }

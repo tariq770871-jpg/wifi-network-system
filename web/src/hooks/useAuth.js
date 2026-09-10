@@ -1,44 +1,33 @@
 import { create } from 'zustand'
 import { authApi } from '../services/auth.service'
 
-function getStorage(remember) {
-  return remember ? localStorage : sessionStorage
-}
+// SECURITY: لا توكن في التخزين المحلي — الجلسة تعيش في كوكي HttpOnly يضبطها الخادم.
+// نخزن بيانات العرض فقط (الاسم/الدور) لتجنب وميض الواجهة عند الإقلاع.
 
-function getStoredAuth() {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  const userJson = localStorage.getItem('user') || sessionStorage.getItem('user')
-  let user = null
-  try { user = JSON.parse(userJson) } catch {}
-  return { token, user, isAuthenticated: !!token }
+function getStoredUser() {
+  try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')) || null } catch { return null }
 }
-
-const { token: initToken, user: initUser, isAuthenticated: initAuth } = getStoredAuth()
 
 export const useAuthStore = create((set, get) => ({
-  user: initUser,
-  token: initToken,
-  isAuthenticated: initAuth,
+  user: getStoredUser(),
+  isAuthenticated: !!getStoredUser(),
   loading: false,
   error: null,
 
   login: async (username, password, rememberMe = true) => {
     set({ loading: true, error: null })
     try {
-      const response = await authApi.login(username, password)
-      const { token, user } = response.data
-      const storage = getStorage(rememberMe)
-      storage.setItem('token', token)
-      storage.setItem('user', JSON.stringify(user))
-      const other = rememberMe ? sessionStorage : localStorage
-      other.removeItem('token')
-      other.removeItem('user')
+      // الخادم يضبط كوكي HttpOnly في استجابة هذا الطلب (withCredentials)
+      const response = await authApi.login(username, password, rememberMe)
+      const { user } = response.data
+      localStorage.setItem('user', JSON.stringify(user))
+      sessionStorage.removeItem('user')
       if (rememberMe) {
         localStorage.setItem('saved_username', username)
       } else {
         localStorage.removeItem('saved_username')
       }
-      set({ user, token, isAuthenticated: true, loading: false })
+      set({ user, isAuthenticated: true, loading: false })
       window.location.href = '/'
       return true
     } catch (err) {
@@ -47,24 +36,25 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  logout: () => {
-    localStorage.removeItem('token')
+  logout: async () => {
+    try { await authApi.logout() } catch { /* حتى لو فشل الطلب نمسح محلياً */ }
     localStorage.removeItem('user')
     localStorage.removeItem('saved_username')
-    sessionStorage.removeItem('token')
     sessionStorage.removeItem('user')
-    set({ user: null, token: null, isAuthenticated: false })
+    set({ user: null, isAuthenticated: false })
     window.location.href = '/login'
   },
 
+  // التحقق من الجلسة عند الإقلاع: الكوكي هو مصدر الحقيقة
   fetchUser: async () => {
     try {
       const response = await authApi.me()
-      set({ user: response.data })
-      const storage = localStorage.getItem('token') ? localStorage : sessionStorage
-      storage.setItem('user', JSON.stringify(response.data))
+      localStorage.setItem('user', JSON.stringify(response.data))
+      set({ user: response.data, isAuthenticated: true })
+      return response.data
     } catch {
-      get().logout()
+      if (get().isAuthenticated) get().logout()
+      return null
     }
   },
 }))

@@ -13,8 +13,21 @@
  */
 const CryptoJS = require('crypto-js');
 const { RouterOSAPI } = require('node-routeros');
+const config = require('../../shared/config');
 
-const ENCRYPTION_KEY = process.env.MIKROTIK_ENCRYPTION_KEY || 'default_key_change_me';
+// SECURITY: لا يوجد مفتاح افتراضي — الإنتاج يفشل فوراً بلا مفتاح صريح قوي
+// (المفتاح الافتراضي القديم 'default_key_change_me' كان يسمح بفك تشفير كلمات المرور المخزنة)
+const WEAK_DEFAULT_KEYS = ['default_key_change_me', 'change_me', 'secret'];
+const rawKey = process.env.MIKROTIK_ENCRYPTION_KEY;
+if (config.env === 'production') {
+    if (!rawKey || rawKey.length < 16 || WEAK_DEFAULT_KEYS.includes(rawKey)) {
+        console.error('FATAL: MIKROTIK_ENCRYPTION_KEY مفقود أو ضعيف (مطلوب 16 حرفاً على الأقل) — رفض بدء التشغيل');
+        process.exit(1);
+    }
+} else if (!rawKey || WEAK_DEFAULT_KEYS.includes(rawKey)) {
+    console.warn('[WARN] MIKROTIK_ENCRYPTION_KEY غير مضبوط — يستخدم مفتاح تطوير غير آمن (ممنوع في الإنتاج)');
+}
+const ENCRYPTION_KEY = rawKey || 'dev_only_insecure_mikrotik_key';
 
 /** سقف زمني صارم لأي عملية MikroTik (يحل مشكلة تعليق TCP مع العناوين غير القابلة للوصول) */
 const OPERATION_TIMEOUT_MS = Number(process.env.MIKROTIK_TIMEOUT_MS) || 8000;
