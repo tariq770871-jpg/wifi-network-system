@@ -1,6 +1,6 @@
 # WiFi Network Management System
 
-نظام إدارة شبكات WiFi - مشروع متكامل
+نظام إدارة شبكات WiFi - مشروع متكامل (مع تكامل MikroTik + Docker + CI/CD)
 
 ## المكونات
 
@@ -12,7 +12,17 @@
 
 ## التشغيل السريع
 
-### Backend
+### ⚡ خيار 1: Docker (الأسهل - كل شيء بأمر واحد)
+```bash
+docker compose up -d --build
+# الواجهة: http://localhost:8080
+# API: http://localhost:3000
+# Swagger: http://localhost:3000/api-docs
+```
+
+### 🔧 خيار 2: يدوي
+
+#### Backend
 ```bash
 cd backend
 npm install
@@ -22,18 +32,56 @@ npm run migrate
 npm run dev
 ```
 
-### Android
+#### Web
+```bash
+cd web
+npm install
+npm run dev
+```
+
+#### Android
 ```bash
 cd android
 flutter pub get
 flutter run
 ```
 
-### Web
+## الاختبارات
+
 ```bash
-cd web
-npm install
-npm run dev
+cd backend
+NODE_ENV=test npx jest --runInBand
+```
+
+حالياً: **65 اختباراً في 9 حزم** (auth, users, tickets, tracking, map-points, health, devices+MikroTik, security, signal+networks)
+
+## CI/CD
+
+سير عمل GitHub Actions في `.github/workflows/ci.yml`:
+1. **backend-lint**: فحص جودة الكود ESLint
+2. **backend-tests**: الاختبارات مع PostgreSQL حقيقي + seed smoke test
+3. **dependency-audit**: npm audit للـ backend والويب
+4. **secret-scan**: كشف الأسرار المضمعة
+5. **web-build**: بناء الإنتاج + التحقق من أصول PWA
+6. **docker-build**: بناء صور Docker
+
+مع **Dependabot** لتحديث الاعتماديات تلقائياً (backend, web, android, actions)
+
+يعمل تلقائياً عند كل push إلى main/master وعلى كل Pull Request.
+
+## تكامل MikroTik (منقول من مشروع ntsm)
+
+وحدة الأجهزة `/api/devices` تدعم الآن:
+- ربط أجهزة MikroTik (IP + منفذ API + مستخدم + كلمة مرور مشفرة AES)
+- اختبار الاتصال: `POST /api/devices/:id/test` — يقرأ الهوية والـ SSID
+- قراءة الموارد الحية: `GET /api/devices/:id/status` (CPU، الذاكرة، مدة التشغيل)
+- حارس مهلة صارم (8 ثوانٍ افتراضياً، قابل للتعديل عبر `MIKROTIK_TIMEOUT_MS`)
+- سجل حالة الأجهزة في جدول `device_status_logs`
+
+متغيرات البيئة الإضافية:
+```env
+MIKROTIK_ENCRYPTION_KEY=مفتاح-تشفير-قوي
+MIKROTIK_TIMEOUT_MS=8000
 ```
 
 ## الوثيقة المتكاملة
@@ -48,6 +96,8 @@ npm run dev
 | Vercel | Web Dashboard | مجاني |
 | Google Play | Android App | - |
 
+دليل النشر خطوة بخطوة: `DEPLOY_CLOUD.md` | دليل العمليات: `OPERATIONS.md`
+
 ## الميزات
 
 - ✅ إدارة البلاغات (CRUD + تعيين + إكمال)
@@ -55,6 +105,15 @@ npm run dev
 - ✅ مسح WiFi (dBm + خريطة حرارية)
 - ✅ نقاط الخريطة (موافقة الإدارة)
 - ✅ تقارير وإحصائيات
+- ✅ **إدارة الأجهزة + تكامل MikroTik (جديد)**
+- ✅ **Docker + docker-compose (جديد)**
+- ✅ **CI/CD بـ GitHub Actions (جديد)**
+- ✅ **65 اختبار آلي + ESLint نظيف (جديد وموسّع)**
+- ✅ **PWA (manifest + offline service worker) (جديد)**
+- ✅ **حماية helmet + منع تصعيد الصلاحيات + seed admin (جديد)**
+- ✅ **i18n عربي/إنجليزي للـ API (جديد)**
+- ✅ **سجلات JSON منظمة + Request-ID correlation (جديد)**
+- ✅ **دليل عمليات: نسخ احتياطي، استعادة، rollback (OPERATIONS.md)**
 - ✅ RTL عربي كامل
 - ✅ خريطة قمر صناعي + OpenStreetMap
 

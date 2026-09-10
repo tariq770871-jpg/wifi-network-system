@@ -1,5 +1,6 @@
 const { query } = require('../../shared/db');
-const { success, error } = require('../../shared/utils/response');
+const { success, error, respondError } = require('../../shared/utils/response');
+const { parsePagination, buildMeta } = require('../../shared/utils/pagination');
 
 /**
  * @swagger
@@ -14,10 +15,26 @@ const { success, error } = require('../../shared/utils/response');
  */
 const getAll = async (req, res) => {
     try {
-        const result = await query('SELECT * FROM tickets ORDER BY created_at DESC');
-        success(res, result.rows);
+        const { page, limit, offset } = parsePagination(req.query);
+        const conditions = [];
+        const params = [];
+        if (req.query.status) {
+            params.push(req.query.status);
+            conditions.push(`status = $${params.length}`);
+        }
+        if (req.query.assigned_to) {
+            params.push(req.query.assigned_to);
+            conditions.push(`assigned_to = $${params.length}`);
+        }
+        const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+        const countResult = await query(`SELECT COUNT(*)::int AS total FROM tickets ${where}`, params);
+        const result = await query(
+            `SELECT * FROM tickets ${where} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+            [...params, limit, offset]
+        );
+        success(res, { items: result.rows, pagination: buildMeta(page, limit, countResult.rows[0].total) });
     } catch (err) {
-        error(res, err.message, 500);
+        respondError(req, res, err);
     }
 };
 

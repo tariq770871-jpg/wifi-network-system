@@ -1,5 +1,5 @@
 const AuthService = require('./auth.service');
-const { success, error } = require('../../shared/utils/response');
+const { success, respondError } = require('../../shared/utils/response');
 
 /**
  * @swagger
@@ -28,10 +28,9 @@ const { success, error } = require('../../shared/utils/response');
 const register = async (req, res) => {
     try {
         const user = await AuthService.register(req.body);
-        success(res, user, 'تم إنشاء الحساب بنجاح');
+        success(res, user, req.t('REGISTERED'), 201);
     } catch (err) {
-        const statusCode = err.statusCode || 500;
-        error(res, err.message, statusCode);
+        respondError(req, res, err);
     }
 };
 
@@ -58,10 +57,9 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     try {
         const result = await AuthService.login(req.body);
-        success(res, result, 'تم تسجيل الدخول بنجاح');
+        success(res, result, req.t('LOGGED_IN'));
     } catch (err) {
-        const statusCode = err.statusCode || 500;
-        error(res, err.message, statusCode);
+        respondError(req, res, err);
     }
 };
 
@@ -80,10 +78,9 @@ const login = async (req, res) => {
 const me = async (req, res) => {
     try {
         const user = await AuthService.getMe(req.user.id);
-        success(res, user);
+        success(res, user, req.t('OK'));
     } catch (err) {
-        const statusCode = err.statusCode || 500;
-        error(res, err.message, statusCode);
+        respondError(req, res, err);
     }
 };
 
@@ -91,20 +88,18 @@ const changePassword = async (req, res) => {
     try {
         const { current_password, new_password } = req.body;
         await AuthService.changePassword(req.user.id, current_password, new_password);
-        success(res, null, 'تم تغيير كلمة المرور بنجاح');
+        success(res, null, req.t('PASSWORD_CHANGED'));
     } catch (err) {
-        const statusCode = err.statusCode || 500;
-        error(res, err.message, statusCode);
+        respondError(req, res, err);
     }
 };
 
 const updateProfile = async (req, res) => {
     try {
         const user = await AuthService.updateProfile(req.user.id, req.body);
-        success(res, user, 'تم تحديث الملف الشخصي بنجاح');
+        success(res, user, req.t('PROFILE_UPDATED'));
     } catch (err) {
-        const statusCode = err.statusCode || 500;
-        error(res, err.message, statusCode);
+        respondError(req, res, err);
     }
 };
 

@@ -6,17 +6,19 @@ const config = require('../../shared/config');
 class AuthService {
     /**
      * Register a new user
+     * SECURITY: role is ALWAYS forced to 'technician' — never trust client input.
+     * First admin is created exclusively via `npm run seed` (server-side).
      */
-    static async register({ username, password, full_name, role, phone, email }) {
+    static async register({ username, password, full_name, phone, email }) {
         const existing = await query('SELECT id FROM users WHERE username = $1', [username]);
         if (existing.rows.length > 0) {
-            throw { statusCode: 409, message: 'اسم المستخدم موجود مسبقاً' };
+            throw { statusCode: 409, messageKey: 'USERNAME_TAKEN', message: 'اسم المستخدم موجود مسبقاً' };
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const result = await query(
             'INSERT INTO users (username, hashed_password, full_name, role, phone, email) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, username, full_name, role, phone, email, created_at',
-            [username, hashedPassword, full_name, role || 'technician', phone, email]
+            [username, hashedPassword, full_name, 'technician', phone, email]
         );
 
         return result.rows[0];
@@ -32,14 +34,14 @@ class AuthService {
         );
 
         if (result.rows.length === 0) {
-            throw { statusCode: 401, message: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
+            throw { statusCode: 401, messageKey: 'INVALID_CREDENTIALS', message: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
         }
 
         const user = result.rows[0];
         const validPassword = await bcrypt.compare(password, user.hashed_password);
 
         if (!validPassword) {
-            throw { statusCode: 401, message: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
+            throw { statusCode: 401, messageKey: 'INVALID_CREDENTIALS', message: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
         }
 
         const token = jwt.sign(
@@ -48,6 +50,7 @@ class AuthService {
             { expiresIn: config.jwt.expiresIn }
         );
 
+        // eslint-disable-next-line no-unused-vars
         const { hashed_password, ...userWithoutPassword } = user;
         return { token, user: userWithoutPassword };
     }
@@ -62,7 +65,7 @@ class AuthService {
         );
 
         if (result.rows.length === 0) {
-            throw { statusCode: 404, message: 'المستخدم غير موجود' };
+            throw { statusCode: 404, messageKey: 'USER_NOT_FOUND', message: 'المستخدم غير موجود' };
         }
 
         return result.rows[0];
@@ -81,12 +84,12 @@ class AuthService {
 
         const result = await query('SELECT hashed_password FROM users WHERE id = $1', [userId]);
         if (result.rows.length === 0) {
-            throw { statusCode: 404, message: 'المستخدم غير موجود' };
+            throw { statusCode: 404, messageKey: 'USER_NOT_FOUND', message: 'المستخدم غير موجود' };
         }
 
         const valid = await bcrypt.compare(currentPassword, result.rows[0].hashed_password);
         if (!valid) {
-            throw { statusCode: 401, message: 'كلمة المرور الحالية غير صحيحة' };
+            throw { statusCode: 401, messageKey: 'WRONG_CURRENT_PASSWORD', message: 'كلمة المرور الحالية غير صحيحة' };
         }
 
         const hashed = await bcrypt.hash(newPassword, 10);
@@ -105,7 +108,7 @@ class AuthService {
         );
 
         if (result.rows.length === 0) {
-            throw { statusCode: 404, message: 'المستخدم غير موجود' };
+            throw { statusCode: 404, messageKey: 'USER_NOT_FOUND', message: 'المستخدم غير موجود' };
         }
 
         return result.rows[0];

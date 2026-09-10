@@ -3,9 +3,14 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const compression = require('compression');
 const morgan = require('morgan');
 const swaggerUi = require('swagger-ui-express');
 const config = require('./shared/config');
+const logger = require('./shared/utils/logger');
+const { requestId } = require('./shared/middleware/requestId');
+const { i18n } = require('./shared/i18n');
 
 const errorHandler = require('./shared/middleware/errorHandler');
 
@@ -22,6 +27,19 @@ const { devicesRoutes } = require('./modules/devices');
 const specs = require('./shared/swagger');
 
 const app = express();
+
+// SECURITY: حماية HTTP headers (XSS، clickjacking، sniffing...)
+app.use(helmet({
+    contentSecurityPolicy: config.env === 'production' ? undefined : false,
+    crossOriginEmbedderPolicy: false,
+}));
+
+// PERFORMANCE: ضغط الاستجابات (gzip/deflate)
+app.use(compression());
+
+// Correlation: معرّف فريد لكل طلب + ترجمة حسب Accept-Language
+app.use(requestId);
+app.use(i18n);
 
 // Create HTTP server for Socket.IO
 const server = http.createServer(app);
@@ -76,6 +94,8 @@ const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 200,
     message: { success: false, error: 'طلبات كثيرة جداً، حاول لاحقاً' },
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 app.use(limiter);
 
@@ -83,12 +103,30 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Logging
-app.use(morgan('combined'));
+// Logging: morgan يمر عبر الـ logger المنظم مع request-id
+morgan.token('id', (req) => req.id);
+app.use(morgan(':id :method :url :status :res[content-length] - :response-time ms', {
+    stream: { write: (line) => logger.info(line.trim()) },
+    skip: (req) => req.url === '/health',
+}));
 
-// Health check
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString(), env: config.env });
+// Health check: يتضمن فحص قاعدة البيانات
+const { query } = require('./shared/db');
+app.get('/health', async (req, res) => {
+    let db = 'ok';
+    try {
+        await query('SELECT 1');
+    } catch {
+        db = 'degraded';
+    }
+    const payload = {
+        status: 'ok',
+        db,
+        timestamp: new Date().toISOString(),
+        env: config.env,
+        uptime_s: Math.floor(process.uptime()),
+    };
+    res.status(db === 'ok' ? 200 : 503).json(payload);
 });
 
 // Swagger
@@ -110,18 +148,28 @@ app.use('/api/devices', devicesRoutes);
 
 // 404
 app.use((req, res) => {
-    res.status(404).json({ success: false, error: 'المسار غير موجود' });
+    res.status(404).json({ success: false, error: req.t ? req.t('ROUTE_NOT_FOUND') : 'المسار غير موجود' });
 });
 
 // Error handler
 app.use(errorHandler);
 
+// STABILITY: منع انهيار العملية على أخطاء غير معالجة
+process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled Rejection', { reason: reason instanceof Error ? reason.stack : reason });
+});
+process.on('uncaughtException', (err) => {
+    logger.error('Uncaught Exception - exiting', { reason: err.stack });
+    process.exit(1);
+});
+
 const PORT = config.port;
 
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Environment: ${config.env}`);
-    console.log(`API Docs: http://localhost:${PORT}/api-docs`);
-});
+// Only start listening when run directly (not during tests / imports)
+if (process.env.NODE_ENV !== 'test' && require.main === module) {
+    server.listen(PORT, () => {
+        logger.info(`Server running on port ${PORT}`, { env: config.env, docs: `/api-docs` });
+    });
+}
 
 module.exports = { app, server, io };

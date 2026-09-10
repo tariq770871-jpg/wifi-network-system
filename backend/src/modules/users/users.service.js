@@ -1,11 +1,15 @@
 const { query } = require('../../shared/db');
+const { parsePagination, buildMeta } = require('../../shared/utils/pagination');
 
 class UsersService {
-    static async getAll() {
+    static async getAll(queryParams = {}) {
+        const { page, limit, offset } = parsePagination(queryParams);
+        const countResult = await query('SELECT COUNT(*)::int AS total FROM users');
         const result = await query(
-            'SELECT id, username, full_name, role, phone, email, is_active, tracking_enabled, tracking_veto, created_at FROM users ORDER BY created_at DESC'
+            'SELECT id, username, full_name, role, phone, email, is_active, tracking_enabled, tracking_veto, created_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+            [limit, offset]
         );
-        return result.rows;
+        return { items: result.rows, pagination: buildMeta(page, limit, countResult.rows[0].total) };
     }
 
     static async getById(id) {
@@ -14,7 +18,7 @@ class UsersService {
             [id]
         );
         if (result.rows.length === 0) {
-            throw { statusCode: 404, message: 'المستخدم غير موجود' };
+            throw { statusCode: 404, messageKey: 'USER_NOT_FOUND', message: 'المستخدم غير موجود' };
         }
         return result.rows[0];
     }

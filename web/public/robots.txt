@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /tickets
+Disallow: /tracking
+Disallow: /users
+Disallow: /reports
+Disallow: /settings
+
+# لوحة تحكم داخلية - الصفحات العامة فقط تُفهرس

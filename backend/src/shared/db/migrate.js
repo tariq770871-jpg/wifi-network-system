@@ -75,6 +75,56 @@ const migrations = [
         signal_dbm INTEGER NOT NULL,
         ssid VARCHAR(100),
         timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )`,
+
+    // Devices table (with MikroTik integration)
+    `CREATE TABLE IF NOT EXISTS devices (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        device_type VARCHAR(30) DEFAULT 'router' CHECK (device_type IN ('router', 'switch', 'access_point', 'antenna', 'other')),
+        ip_address VARCHAR(45),
+        location_lat DOUBLE PRECISION,
+        location_lng DOUBLE PRECISION,
+        status VARCHAR(20) DEFAULT 'offline' CHECK (status IN ('online', 'offline', 'maintenance')),
+        is_mikrotik_linked BOOLEAN DEFAULT false,
+        mikrotik_username VARCHAR(50) DEFAULT 'monitor',
+        mikrotik_api_port INTEGER DEFAULT 8728,
+        mikrotik_password_encrypted TEXT,
+        last_ssid VARCHAR(100),
+        last_seen TIMESTAMP WITH TIME ZONE,
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )`,
+
+    // Device status history (MikroTik monitoring)
+    `CREATE TABLE IF NOT EXISTS device_status_logs (
+        id SERIAL PRIMARY KEY,
+        device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL,
+        ssid VARCHAR(100),
+        cpu_load INTEGER,
+        free_memory_mb INTEGER,
+        uptime VARCHAR(50),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )`,
+
+    // WiFi networks managed/discovered
+    `CREATE TABLE IF NOT EXISTS networks (
+        id SERIAL PRIMARY KEY,
+        ssid VARCHAR(100) NOT NULL,
+        band DOUBLE PRECISION DEFAULT 2.4,
+        channel INTEGER,
+        frequency_mhz INTEGER,
+        security_type VARCHAR(20) DEFAULT 'wpa2' CHECK (security_type IN ('open', 'wep', 'wpa', 'wpa2', 'wpa3')),
+        location_lat DOUBLE PRECISION,
+        location_lng DOUBLE PRECISION,
+        status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'planned')),
+        notes TEXT,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     )`
 ];
 

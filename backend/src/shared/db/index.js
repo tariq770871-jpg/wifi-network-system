@@ -10,8 +10,9 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-    console.error('Unexpected error on idle client', err);
-    process.exit(-1);
+    // STABILITY: لا نقتل العملية على خطأ عميل خامل — نسجل ونستمر
+    // (الـ Pool سيعيد إنشاء اتصالات جديدة تلقائياً)
+    console.error('[db] Unexpected error on idle client:', err.message);
 });
 
 // Graceful shutdown

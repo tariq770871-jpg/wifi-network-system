@@ -146,3 +146,67 @@ npm run dev
 ```
 
 **للإنتاج: استخدم الخطوات أعلاه (Render + Vercel)**
+
+---
+
+## الخيار السريع: Docker على أي خادم (VPS)
+
+بديل السحابة المجانية: تشغيل كامل على VPS واحد بأمر واحد.
+
+### المتطلبات
+- أي VPS (DigitalOcean / Hetzner / Oracle Cloud Free)
+- Docker + Docker Compose مثبتان
+
+### الخطوات
+```bash
+# 1. استنساخ المشروع
+git clone https://github.com/tariq770871-jpg/wifi-network-system.git
+cd wifi-network-system
+
+# 2. إنشاء ملف البيئة
+cat > .env << 'ENVEOF'
+POSTGRES_USER=wifi
+POSTGRES_PASSWORD=كلمة-مرور-قوية-هنا
+POSTGRES_DB=wifi_network
+JWT_SECRET=سر-jwt-قوي-على-الأقل-32-حرف
+MIKROTIK_ENCRYPTION_KEY=مفتاح-mikrotik-قوي
+ALLOWED_ORIGINS=http://YOUR_SERVER_IP:8080
+VITE_API_URL=http://YOUR_SERVER_IP:3000
+ENVEOF
+
+# 3. بناء وتشغيل كل الخدمات (API + Web + PostgreSQL)
+docker compose up -d --build
+
+# 4. تطبيق الترحيلات (أول مرة فقط)
+docker compose exec api node src/shared/db/migrate.js
+```
+
+### الخدمات
+| الخدمة | المنفذ | الرابط |
+|--------|--------|--------|
+| Web Dashboard | 8080 | http://YOUR_SERVER_IP:8080 |
+| Backend API | 3000 | http://YOUR_SERVER_IP:3000 |
+| Swagger Docs | 3000 | http://YOUR_SERVER_IP:3000/api-docs |
+| PostgreSQL | داخلي | غير مكشوف للخارج (أفضل للأمان) |
+
+### أوامر مفيدة
+```bash
+docker compose logs -f api      # متابعة سجلات API
+docker compose restart api      # إعادة تشغيل API
+docker compose down             # إيقاف كل شيء (البيانات تبقى)
+docker compose down -v          # إيقاف + حذف البيانات ⚠️
+```
+
+**ملاحظة**: لتشغيل HTTPS على VPS، ضع Nginx/Caddy أمام الخدمات أو استخدم Cloudflare.
+
+---
+
+## مقارنة الخيارين
+
+| المعيار | Render+Neon+Vercel | Docker على VPS |
+|---------|--------------------|----------------|
+| التكلفة | مجاني (مع قيود النوم) | ~4-6$/شهر |
+| سهولة الإعداد | متوسط (3 خدمات) | سهل (أمر واحد) |
+| HTTPS | تلقائي | يحتاج إعداد |
+| التحكم الكامل | لا | نعم |
+| تكامل MikroTik | يعمل (API صادر) | يعمل (نفس الشبكة مثالياً) |

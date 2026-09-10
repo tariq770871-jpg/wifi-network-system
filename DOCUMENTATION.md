@@ -319,3 +319,59 @@ npm run build    # بناء الإنتاج
 → يتوجه للموقع (GPS) → يبدأ العمل → يمسح الإشارة → يرفع ملاحظات
 → يكمل البلاغ → الإدارة تشوف التقرير
 ```
+
+---
+
+## 12. سجل الإصدارات Changelog
+
+### v2.1 — تدقيق المعايير العشرين (الإصلاح الشامل)
+
+**الأمان (Security)**
+- إغلاق ثغرة حرجة: منع تعيين `role` عند التسجيل — أول admin حصراً عبر `npm run seed`
+- تفعيل helmet (HSTS, nosniff, X-Frame-Options, CSP في الإنتاج)
+- توسيع تحقق المدخلات (express-validator) لكل الوحدات: tickets, tracking, users, map-points, devices, networks, signal
+- حذف multer غير المستخدم + ترقية uuid وإصلاح ثغرات qs
+- مسح أسرار آلي في CI (secret scanning)
+
+**الاستقرار (Stability)**
+- إزالة `process.exit(-1)` من معالج أخطاء الـ pool
+- معالجات `unhandledRejection` و`uncaughtException`
+- `/health` يفحص قاعدة البيانات ويعيد `db: ok|degraded`
+
+**الأداء (Performance)**
+- compression (gzip) على كل استجابات الـ API
+- pagination موحد لكل قوائم الجداول (limit max 100)
+- code splitting: كل صفحة bundle مستقل (22 chunk بدل ملف واحد)
+
+**ميزات جديدة**
+- وحدة signal حقيقية: تسجيل قراءات + heatmap تجميعي + إحصائيات تغطية
+- وحدة networks كاملة (CRUD + جدول جديد)
+- 12 endpoint جديدة + اختباراتها (65 اختبار إجمالاً)
+
+**المراقبة (Observability)**
+- logger JSON منظم مع مستويات + إخفاء الأسرار
+- X-Request-ID لكل طلب (correlation) + يظهر في السجلات والاستجابات
+- morgan يمر عبر الـ logger مع request-id
+
+**التدويل (i18n)**
+- بنية ترجمة ar/en كاملة للـ API عبر Accept-Language أو ?lang=
+- errorHandler والـ controllers تستخدم مفاتيح ترجمة
+
+**الويب (Web)**
+- PWA: manifest + service worker (offline) + أيقونات + robots.txt
+- SEO: meta description + OG tags
+- إصلاح خطأ نحوي كان يمنع البناء في Layout.jsx
+- وصولية: aria-labels، ربط labels، أهداف لمس 44px، احترام prefers-reduced-motion/contrast
+- safe-area للجوال + Intl للتواريخ والأرقام والوقت النسبي
+- EmptyState موحد + PageLoader
+
+**CI/CD**
+- 6 وظائف: lint، اختبارات (+seed smoke)، audit، secret-scan، بناء ويب (+تحقق PWA)، بناء Docker
+- Dependabot: backend + web + android (pub) + github-actions
+
+**التوثيق والتشغيل**
+- OPERATIONS.md: نسخ احتياطي/استعادة، rollback، smoke tests، استجابة للحوادث
+- seed script idempotent مع كلمة مرور عشوائية آمنة
+
+**إصلاحات بجودة الكود**
+- ESLint 9 (flat config) نظيف: 0 أخطاء عبر src + tests

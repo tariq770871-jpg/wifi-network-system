@@ -274,3 +274,45 @@ html {
 .dark .recharts-legend-item-text {
   fill: #cbd5e1 !important;
 }
+/* ========== Mobile / Safe Area (criterion 16) ========== */
+.safe-area-padding {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* أهداف لمس أكبر على الشاشات اللمسية (WCAG 2.5.5) */
+@media (pointer: coarse) {
+  button, a[role="button"], [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* تباين أعلى عند تفعيل وضع التباين العالي في النظام */
+@media (prefers-contrast: more) {
+  .text-gray-400, .text-gray-500 { color: #374151; }
+}
+
+/* احترام تقليل الحركة (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ========== Utilities ========== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

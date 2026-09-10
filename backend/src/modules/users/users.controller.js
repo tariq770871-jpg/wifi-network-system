@@ -1,5 +1,5 @@
 const UsersService = require('./users.service');
-const { success, error } = require('../../shared/utils/response');
+const { success, error, respondError } = require('../../shared/utils/response');
 
 /**
  * @swagger
@@ -15,10 +15,10 @@ const { success, error } = require('../../shared/utils/response');
  */
 const getAll = async (req, res) => {
     try {
-        const users = await UsersService.getAll();
+        const users = await UsersService.getAll(req.query);
         success(res, users);
     } catch (err) {
-        error(res, err.message, err.statusCode || 500);
+        respondError(req, res, err);
     }
 };
 

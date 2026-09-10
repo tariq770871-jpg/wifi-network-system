@@ -1,5 +1,5 @@
 const MapPointsService = require('./map-points.service');
-const { success, error } = require('../../shared/utils/response');
+const { success, error, respondError } = require('../../shared/utils/response');
 
 /**
  * @swagger
@@ -21,7 +21,7 @@ const getAll = async (req, res) => {
         const points = await MapPointsService.getAll(req.query);
         success(res, points);
     } catch (err) {
-        error(res, err.message, err.statusCode || 500);
+        respondError(req, res, err);
     }
 };
 
@@ -67,7 +67,7 @@ const getById = async (req, res) => {
         const point = await MapPointsService.getById(req.params.id);
         success(res, point);
     } catch (err) {
-        error(res, err.message, err.statusCode || 500);
+        respondError(req, res, err);
     }
 };
 
@@ -100,7 +100,7 @@ const create = async (req, res) => {
         const point = await MapPointsService.create(req.body, req.user.id);
         success(res, point, 'تم إرسال الطلب بنجاح - بانتظار موافقة الإدارة');
     } catch (err) {
-        error(res, err.message, err.statusCode || 500);
+        respondError(req, res, err);
     }
 };
 
@@ -136,7 +136,7 @@ const review = async (req, res) => {
         const message = req.body.status === 'approved' ? 'تمت الموافقة على النقطة' : 'تم رفض النقطة';
         success(res, point, message);
     } catch (err) {
-        error(res, err.message, err.statusCode || 500);
+        respondError(req, res, err);
     }
 };
 
@@ -161,7 +161,7 @@ const deletePoint = async (req, res) => {
         await MapPointsService.delete(req.params.id);
         success(res, null, 'تم حذف النقطة');
     } catch (err) {
-        error(res, err.message, err.statusCode || 500);
+        respondError(req, res, err);
     }
 };
 

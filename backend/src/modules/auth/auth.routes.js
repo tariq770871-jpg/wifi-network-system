@@ -10,8 +10,10 @@ router.post('/register',
         body('username').trim().isLength({ min: 3, max: 50 }).withMessage('اسم المستخدم بين 3 و 50 حرف'),
         body('password').isLength({ min: 6 }).withMessage('كلمة المرور 6 أحرف على الأقل'),
         body('full_name').trim().notEmpty().withMessage('الاسم الكامل مطلوب'),
-        body('role').optional().isIn(['admin', 'support', 'technician']).withMessage('دور غير صالح'),
         body('email').optional().isEmail().withMessage('بريد إلكتروني غير صالح'),
+        body('phone').optional().isString().trim(),
+        // SECURITY: لا يُقبل role من العميل إطلاقاً — يُفرض technician من الخادم
+        body('role').not().exists({ checkFalsy: true }).withMessage('لا يمكن تحديد الدور عند التسجيل - الدور يُعيّن من الإدارة'),
     ],
     validateRequest,
     register

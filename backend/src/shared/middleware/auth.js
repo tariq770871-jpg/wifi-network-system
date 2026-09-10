@@ -21,7 +21,7 @@ const authenticate = async (req, res, next) => {
 
         req.user = result.rows[0];
         next();
-    } catch (err) {
+    } catch {
         return res.status(401).json({ success: false, error: 'رمز المصادقة غير صالح' });
     }
 };

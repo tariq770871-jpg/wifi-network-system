@@ -139,7 +139,7 @@ export default function Layout() {
       )}
 
       {/* ===== SIDEBAR ===== */}
-      <aside className={`${
+      <aside aria-label="القائمة الجانبية" className={`${
         isDesktop
           ? `${sidebarOpen ? 'w-64' : 'w-[72px]'} relative flex-shrink-0`
           : `fixed top-0 right-0 h-full w-72 z-50 ${mobileOpen ? 'translate-x-0' : 'translate-x-full'}`
@@ -275,6 +275,7 @@ export default function Layout() {
                 onClick={logout}
                 className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
                 title="تسجيل الخروج"
+                aria-label="تسجيل الخروج"
               >
                 <LogOut size={16} />
               </button>
@@ -294,13 +295,15 @@ export default function Layout() {
       {/* ===== MAIN CONTENT ===== */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header Bar */}
-        <header className="h-14 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200/80 dark:border-gray-700/50 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-30">
+        <header aria-label="شريط الأدوات" className="h-14 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200/80 dark:border-gray-700/50 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-30">
           <div className="flex items-center gap-3">
             {/* Mobile hamburger - inside header */}
             {!isDesktop && (
               <button
                 onClick={() => setMobileOpen(true)}
                 className="p-2 -mr-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
+                aria-label="فتح القائمة الجانبية"
+                aria-expanded={mobileOpen}
               >
                 <Menu size={20} />
               </button>
@@ -316,6 +319,8 @@ export default function Layout() {
               <button
                 onClick={() => setShowNotifPanel(!showNotifPanel)}
                 className="relative p-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
+                aria-label="الإشعارات"
+                aria-expanded={showNotifPanel}
               >
                 <Bell size={19} />
                 {unreadCount > 0 && (

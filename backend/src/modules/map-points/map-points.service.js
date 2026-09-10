@@ -1,7 +1,10 @@
 const { query } = require('../../shared/db');
+const { parsePagination, buildMeta } = require('../../shared/utils/pagination');
 
 class MapPointsService {
-    static async getAll({ status } = {}) {
+    static async getAll(queryParams = {}) {
+        const status = queryParams.status;
+        const { page, limit, offset } = parsePagination(queryParams);
         let sql = `
             SELECT mp.*, creator.full_name as creator_name, reviewer.full_name as reviewer_name
             FROM map_points mp
@@ -12,14 +15,15 @@ class MapPointsService {
         const params = [];
 
         if (status) {
-            sql += ' AND mp.status = $1';
             params.push(status);
+            sql += ` AND mp.status = $${params.length}`;
         }
 
-        sql += ' ORDER BY mp.created_at DESC';
+        sql += ` ORDER BY mp.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
 
-        const result = await query(sql, params);
-        return result.rows;
+        const countResult = await query(`SELECT COUNT(*)::int AS total FROM map_points mp ${status ? 'WHERE mp.status = $1' : ''}`, status ? [status] : []);
+        const result = await query(sql, [...params, limit, offset]);
+        return { items: result.rows, pagination: buildMeta(page, limit, countResult.rows[0].total) };
     }
 
     static async getById(id) {
