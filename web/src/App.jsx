@@ -13,6 +13,7 @@ const DashboardPage = lazy(() => import('./pages/Dashboard/DashboardPage'))
 const TicketsPage = lazy(() => import('./pages/Tickets/TicketsPage'))
 const TrackingPage = lazy(() => import('./pages/Tracking/TrackingPage'))
 const MapPointsPage = lazy(() => import('./pages/MapPoints/MapPointsPage'))
+const DevicesPage = lazy(() => import('./pages/Devices/DevicesPage'))
 const ReportsPage = lazy(() => import('./pages/Reports/ReportsPage'))
 const SettingsPage = lazy(() => import('./pages/Settings/SettingsPage'))
 const UsersPage = lazy(() => import('./pages/Users/UsersPage'))
@@ -59,11 +60,17 @@ function App() {
               <Route element={<Layout />}>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/tickets" element={<TicketsPage />} />
+                {/* الفني يحتاج هذه الصفحة لزر بدء/إيقاف بث GPS — القائمة الحية للفنيين للمدير/الدعم فقط */}
                 <Route
                   path="/tracking"
-                  element={<RoleRoute roles={['admin', 'support']}><TrackingPage /></RoleRoute>}
+                  element={<RoleRoute roles={['admin', 'support', 'technician']}><TrackingPage /></RoleRoute>}
                 />
                 <Route path="/map-points" element={<MapPointsPage />} />
+                {/* الأجهزة: القراءة لكل الأدوار، الكتابة للمدير فقط (مفروضة في الخلفية) */}
+                <Route
+                  path="/devices"
+                  element={<RoleRoute roles={['admin', 'support', 'technician']}><DevicesPage /></RoleRoute>}
+                />
                 <Route
                   path="/reports"
                   element={<RoleRoute roles={['admin', 'support']}><ReportsPage /></RoleRoute>}

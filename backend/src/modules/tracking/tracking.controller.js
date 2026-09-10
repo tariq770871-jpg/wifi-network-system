@@ -39,6 +39,27 @@ const logLocation = async (req, res) => {
 
 /**
  * @swagger
+ * /api/tracking/status:
+ *   get:
+ *     tags: [Tracking]
+ *     summary: حالة تتبع المستخدم الحالي (يمكّن الواجهة من عرض السبب قبل بدء البث)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: { can_track, tracking_enabled, tracking_veto, last_log_at, reason }
+ */
+const getTrackingStatus = async (req, res) => {
+    try {
+        const status = await TrackingService.getTrackingStatus(req.user.id);
+        success(res, status);
+    } catch (err) {
+        error(res, err.message, err.statusCode || 500);
+    }
+};
+
+/**
+ * @swagger
  * /api/tracking/live:
  *   get:
  *     tags: [Tracking]
@@ -151,4 +172,4 @@ const getSignalReadings = async (req, res) => {
     }
 };
 
-module.exports = { logLocation, getLiveLocations, getTechnicianPath, logSignal, getSignalReadings };
+module.exports = { logLocation, getTrackingStatus, getLiveLocations, getTechnicianPath, logSignal, getSignalReadings };

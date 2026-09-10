@@ -42,10 +42,25 @@ class UsersService {
         return result.rows[0];
     }
 
-    static async controlTracking(id, enabled) {
+    static async controlTracking(id, enabled, veto) {
+        // دعم ضبط التفعيل وحق الاعتراض معاً أو منفصلاً (المدير فقط)
+        const sets = [];
+        const params = [];
+        if (enabled !== undefined) {
+            params.push(!!enabled);
+            sets.push(`tracking_enabled = $${params.length}`);
+        }
+        if (veto !== undefined) {
+            params.push(!!veto);
+            sets.push(`tracking_veto = $${params.length}`);
+        }
+        if (sets.length === 0) {
+            throw { statusCode: 400, message: 'لا توجد قيم للتحديث — أرسل enabled و/أو tracking_veto' };
+        }
+        params.push(id);
         const result = await query(
-            'UPDATE users SET tracking_enabled = $1, updated_at = NOW() WHERE id = $2 RETURNING id, username, full_name, tracking_enabled, tracking_veto',
-            [enabled, id]
+            `UPDATE users SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${params.length} RETURNING id, username, full_name, tracking_enabled, tracking_veto`,
+            params
         );
         if (result.rows.length === 0) {
             throw { statusCode: 404, message: 'المستخدم غير موجود' };

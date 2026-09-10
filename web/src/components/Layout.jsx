@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../hooks/useAuth'
-import { LayoutDashboard, Ticket, MapPin, Map, BarChart3, LogOut, Menu, Settings, Users as UsersIcon, X, Sun, Moon, Bell, ChevronLeft, Search } from 'lucide-react'
+import { LayoutDashboard, Ticket, MapPin, Map, Router, BarChart3, LogOut, Menu, Settings, Users as UsersIcon, X, Sun, Moon, Bell, ChevronLeft, Search } from 'lucide-react'
 import { useState, useEffect, useMemo, useCallback, useContext } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
@@ -12,8 +12,9 @@ const THEME_KEY = 'theme'
 const allNavItems = [
   { path: '/', labelKey: 'nav.home', icon: LayoutDashboard, roles: ['admin','support','technician'] },
   { path: '/tickets', labelKey: 'nav.tickets', icon: Ticket, roles: ['admin','support','technician'] },
-  { path: '/tracking', labelKey: 'nav.tracking', icon: MapPin, roles: ['admin','support'] },
+  { path: '/tracking', labelKey: 'nav.tracking', icon: MapPin, roles: ['admin','support','technician'] },
   { path: '/map-points', labelKey: 'nav.mapPoints', icon: Map, roles: ['admin','support','technician'] },
+  { path: '/devices', labelKey: 'nav.devices', icon: Router, roles: ['admin','support','technician'] },
   { path: '/reports', labelKey: 'nav.reports', icon: BarChart3, roles: ['admin','support'] },
   { path: '/users', labelKey: 'nav.users', icon: UsersIcon, roles: ['admin'] },
   { path: '/settings', labelKey: 'nav.settings', icon: Settings, roles: ['admin','support','technician'] },

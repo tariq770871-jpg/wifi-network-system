@@ -6,10 +6,12 @@ const { query } = require('../../shared/db');
 const { parsePagination, buildMeta } = require('../../shared/utils/pagination');
 const mikrotik = require('./mikrotik.service');
 
-/** جلب كل الأجهزة مع ترقيم صفحات وترشيح بالحالة */
+/** جلب كل الأجهزة مع ترقيم صفحات وترشيح (الحالة/النوع/مصدر الإحداثية) وبحث نصي */
 async function listDevices(queryParams = {}) {
     const status = queryParams.status;
     const device_type = queryParams.device_type;
+    const coordinate_source = queryParams.coordinate_source;
+    const search = (queryParams.search || '').trim();
     const { page, limit, offset } = parsePagination(queryParams);
 
     const conditions = [];
@@ -17,24 +19,55 @@ async function listDevices(queryParams = {}) {
 
     if (status) {
         params.push(status);
-        conditions.push(`status = $${params.length}`);
+        conditions.push(`d.status = $${params.length}`);
     }
     if (device_type) {
         params.push(device_type);
-        conditions.push(`device_type = $${params.length}`);
+        conditions.push(`d.device_type = $${params.length}`);
+    }
+    if (coordinate_source) {
+        params.push(coordinate_source);
+        conditions.push(`d.coordinate_source = $${params.length}`);
+    }
+    // بحث نصي موحّد: الاسم، الموديل، المصنّع، الرقم التسلسلي، MAC، IP
+    if (search) {
+        params.push(`%${search}%`);
+        const p = `$${params.length}`;
+        conditions.push(`(d.name ILIKE ${p} OR d.model ILIKE ${p} OR d.manufacturer ILIKE ${p}
+                         OR d.serial_number ILIKE ${p} OR d.mac_address ILIKE ${p} OR d.ip_address ILIKE ${p})`);
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const countResult = await query(`SELECT COUNT(*)::int AS total FROM devices ${where}`, params);
+    const countResult = await query(`SELECT COUNT(*)::int AS total FROM devices d ${where}`, params);
     const result = await query(
-        `SELECT id, name, device_type, ip_address, location_lat, location_lng, status,
-                is_mikrotik_linked, mikrotik_username, mikrotik_api_port, last_ssid, last_seen,
-                notes, created_at, updated_at
-         FROM devices ${where}
-         ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        `SELECT d.id, d.name, d.device_type, d.model, d.manufacturer, d.serial_number, d.mac_address,
+                d.ip_address, d.location_lat, d.location_lng, d.coordinate_source, d.gps_accuracy,
+                d.installed_at, d.installed_by, installer.full_name AS installed_by_name,
+                d.status, d.is_mikrotik_linked, d.mikrotik_username, d.mikrotik_api_port,
+                d.last_ssid, d.last_seen, d.notes, d.created_at, d.updated_at
+         FROM devices d
+         LEFT JOIN users installer ON installer.id = d.installed_by
+         ${where}
+         ORDER BY d.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, limit, offset]
     );
     return { items: result.rows, pagination: buildMeta(page, limit, countResult.rows[0].total) };
+}
+
+/** جلب جهاز واحد بالتفاصيل الكاملة (يشمل اسم الفني المركّب) */
+async function getDevice(id) {
+    const result = await query(
+        `SELECT d.id, d.name, d.device_type, d.model, d.manufacturer, d.serial_number, d.mac_address,
+                d.ip_address, d.location_lat, d.location_lng, d.coordinate_source, d.gps_accuracy,
+                d.installed_at, d.installed_by, installer.full_name AS installed_by_name,
+                d.status, d.is_mikrotik_linked, d.mikrotik_username, d.mikrotik_api_port,
+                d.last_ssid, d.last_seen, d.notes, d.created_at, d.updated_at
+         FROM devices d
+         LEFT JOIN users installer ON installer.id = d.installed_by
+         WHERE d.id = $1`,
+        [id]
+    );
+    return result.rows[0] || null;
 }
 
 /** جلب جهاز واحد بالكامل (يشمل كلمة المرور المشفرة للاستخدام الداخلي) */
@@ -44,7 +77,9 @@ async function getDeviceRaw(id) {
 }
 
 /** إنشاء جهاز جديد (مع تشفير كلمة مرور MikroTik إن وُجدت) */
-async function createDevice({ name, device_type, ip_address, location_lat, location_lng,
+async function createDevice({ name, device_type, model, manufacturer, serial_number, mac_address,
+                              ip_address, location_lat, location_lng, coordinate_source, gps_accuracy,
+                              installed_at, installed_by, status,
                               is_mikrotik_linked, mikrotik_username, mikrotik_api_port,
                               mikrotik_password, notes, created_by }) {
     const encrypted = is_mikrotik_linked && mikrotik_password
@@ -52,11 +87,20 @@ async function createDevice({ name, device_type, ip_address, location_lat, locat
         : null;
 
     const result = await query(
-        `INSERT INTO devices (name, device_type, ip_address, location_lat, location_lng,
+        `INSERT INTO devices (name, device_type, model, manufacturer, serial_number, mac_address,
+                              ip_address, location_lat, location_lng, coordinate_source, gps_accuracy,
+                              installed_at, installed_by, status,
                               is_mikrotik_linked, mikrotik_username, mikrotik_api_port,
                               mikrotik_password_encrypted, notes, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-        [name, device_type || 'router', ip_address || null, location_lat || null, location_lng || null,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING *`,
+        [name, device_type || 'router', model || null, manufacturer || null, serial_number || null,
+         mac_address ? mac_address.toUpperCase() : null,
+         ip_address || null, location_lat ?? null, location_lng ?? null,
+         // مصدر الإحداثية يستنتج تلقائياً إن لم يُحدد: GPS عند دقة موثقة، وإلا يدوي
+         coordinate_source || (gps_accuracy != null && location_lat != null ? 'gps' : 'manual'),
+         gps_accuracy ?? null,
+         installed_at || null, installed_by || null,
+         status || 'offline',
          !!is_mikrotik_linked, mikrotik_username || 'monitor', mikrotik_api_port || 8728,
          encrypted, notes || null, created_by || null]
     );
@@ -65,13 +109,15 @@ async function createDevice({ name, device_type, ip_address, location_lat, locat
 
 /** تحديث جهاز موجود */
 async function updateDevice(id, fields) {
-    const allowed = ['name', 'device_type', 'ip_address', 'location_lat', 'location_lng',
-                     'status', 'is_mikrotik_linked', 'mikrotik_username', 'mikrotik_api_port', 'notes'];
+    const allowed = ['name', 'device_type', 'model', 'manufacturer', 'serial_number', 'mac_address',
+                     'ip_address', 'location_lat', 'location_lng', 'coordinate_source', 'gps_accuracy',
+                     'installed_at', 'installed_by', 'status',
+                     'is_mikrotik_linked', 'mikrotik_username', 'mikrotik_api_port', 'notes'];
     const sets = [];
     const params = [];
     for (const key of allowed) {
         if (fields[key] !== undefined) {
-            params.push(fields[key]);
+            params.push(key === 'mac_address' && fields[key] ? String(fields[key]).toUpperCase() : fields[key]);
             sets.push(`${key} = $${params.length}`);
         }
     }
@@ -146,6 +192,7 @@ async function getDeviceResources(id) {
 
 module.exports = {
     listDevices,
+    getDevice,
     getDeviceRaw,
     createDevice,
     updateDevice,

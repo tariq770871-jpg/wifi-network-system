@@ -3,8 +3,10 @@ const router = express.Router();
 const { body, param, query } = require('express-validator');
 const { authenticate, authorize } = require('../../shared/middleware/auth');
 const { validateRequest } = require('../../shared/middleware/validate');
-const { logLocation, getLiveLocations, getTechnicianPath, logSignal, getSignalReadings } = require('./tracking.controller');
+const { logLocation, getTrackingStatus, getLiveLocations, getTechnicianPath, logSignal, getSignalReadings } = require('./tracking.controller');
 
+// حالة التتبع للمستخدم الحالي (فني/مدير/دعم) — تعرض سبب المنع بدقة قبل بدء البث
+router.get('/status', authenticate, getTrackingStatus);
 router.post('/log',
     [
         body('lat').isFloat({ min: -90, max: 90 }).withMessage('lat غير صالح'),

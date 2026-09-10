@@ -111,9 +111,17 @@ const update = async (req, res) => {
  */
 const controlTracking = async (req, res) => {
     try {
-        const { enabled } = req.body;
-        const user = await UsersService.controlTracking(req.params.id, enabled);
-        success(res, user, enabled ? 'تم تفعيل التتبع' : 'تم إيقاف التتبع');
+        // عقد موسع: enabled (القديم) أو tracking_enabled، و tracking_veto (حق الاعتراض) — كلاهما اختياري
+        const { enabled, tracking_enabled, tracking_veto } = req.body;
+        const enabledVal = enabled !== undefined ? enabled : tracking_enabled;
+        if (enabledVal === undefined && tracking_veto === undefined) {
+            return error(res, 'أرسل enabled و/أو tracking_veto', 400);
+        }
+        const user = await UsersService.controlTracking(req.params.id, enabledVal, tracking_veto);
+        const parts = [];
+        if (enabledVal !== undefined) parts.push(enabledVal ? 'تم تفعيل التتبع' : 'تم إيقاف التتبع');
+        if (tracking_veto !== undefined) parts.push(tracking_veto ? 'تم تفعيل حق الاعتراض' : 'تم رفع حق الاعتراض');
+        success(res, user, parts.join(' — ') || 'تم التحديث');
     } catch (err) {
         error(res, err.message, err.statusCode || 500);
     }

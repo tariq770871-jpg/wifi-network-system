@@ -82,9 +82,17 @@ const migrations = [
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         device_type VARCHAR(30) DEFAULT 'router' CHECK (device_type IN ('router', 'switch', 'access_point', 'antenna', 'other')),
+        model VARCHAR(100),
+        manufacturer VARCHAR(100),
+        serial_number VARCHAR(100),
+        mac_address VARCHAR(17),
         ip_address VARCHAR(45),
         location_lat DOUBLE PRECISION,
         location_lng DOUBLE PRECISION,
+        coordinate_source VARCHAR(20) DEFAULT 'manual' CHECK (coordinate_source IN ('gps', 'manual', 'mikrotik')),
+        gps_accuracy DOUBLE PRECISION,
+        installed_at TIMESTAMP WITH TIME ZONE,
+        installed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         status VARCHAR(20) DEFAULT 'offline' CHECK (status IN ('online', 'offline', 'maintenance')),
         is_mikrotik_linked BOOLEAN DEFAULT false,
         mikrotik_username VARCHAR(50) DEFAULT 'monitor',
@@ -125,7 +133,29 @@ const migrations = [
         created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    )`
+    )`,
+
+    // ===== ترقيات مخطط قواعد بيانات قائمة (idempotent — آمنة على الإنتاج) =====
+    // بيانات الجهاز الموسعة: الموديل، المصنّع، الرقم التسلسلي، MAC، التركيب، مصدر الإحداثية
+    `ALTER TABLE devices ADD COLUMN IF NOT EXISTS model VARCHAR(100)`,
+    `ALTER TABLE devices ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(100)`,
+    `ALTER TABLE devices ADD COLUMN IF NOT EXISTS serial_number VARCHAR(100)`,
+    `ALTER TABLE devices ADD COLUMN IF NOT EXISTS mac_address VARCHAR(17)`,
+    `ALTER TABLE devices ADD COLUMN IF NOT EXISTS coordinate_source VARCHAR(20) DEFAULT 'manual'`,
+    `ALTER TABLE devices ADD COLUMN IF NOT EXISTS gps_accuracy DOUBLE PRECISION`,
+    `ALTER TABLE devices ADD COLUMN IF NOT EXISTS installed_at TIMESTAMP WITH TIME ZONE`,
+    `ALTER TABLE devices ADD COLUMN IF NOT EXISTS installed_by INTEGER REFERENCES users(id) ON DELETE SET NULL`,
+    // قيد مصدر الإحداثية يُضاف فقط إن لم يوجد (Postgres لا يدعم IF NOT EXISTS للقيود)
+    `DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'devices_coordinate_source_check') THEN
+            ALTER TABLE devices ADD CONSTRAINT devices_coordinate_source_check
+                CHECK (coordinate_source IN ('gps', 'manual', 'mikrotik'));
+        END IF;
+    END $$`,
+    // فهرس البحث السريع بالاسم/الرقم التسلسلي/MAC/IP
+    `CREATE INDEX IF NOT EXISTS devices_name_trgm_idx ON devices (name)`,
+    `CREATE INDEX IF NOT EXISTS devices_serial_idx ON devices (serial_number)`,
+    `CREATE INDEX IF NOT EXISTS devices_mac_idx ON devices (mac_address)`
 ];
 
 async function migrate() {

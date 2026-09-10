@@ -2,6 +2,40 @@ const { query } = require('../../shared/db');
 
 class TrackingService {
     /**
+     * حالة التتبع لمستخدم (للواجهة قبل بدء البث)
+     * تُرجع السبب الدقيق عند المنع: غير مفعّل أم موقوف بحق الاعتراض
+     */
+    static async getTrackingStatus(userId) {
+        const userResult = await query(
+            `SELECT u.tracking_enabled, u.tracking_veto,
+                    (SELECT MAX(created_at) FROM tracking_logs WHERE user_id = u.id) AS last_log_at
+             FROM users u WHERE u.id = $1`,
+            [userId]
+        );
+
+        if (userResult.rows.length === 0) {
+            throw { statusCode: 404, message: 'المستخدم غير موجود' };
+        }
+
+        const user = userResult.rows[0];
+        const vetoed = !!user.tracking_veto;
+        const disabled = !user.tracking_enabled;
+
+        return {
+            tracking_enabled: !!user.tracking_enabled,
+            tracking_veto: vetoed,
+            can_track: !vetoed && !disabled,
+            last_log_at: user.last_log_at,
+            // السبب الدقيق للمنع — الواجهة تعرضه مباشرة للمستخدم
+            reason: vetoed
+                ? 'التتبع موقوف بحق الاعتراض من الإدارة'
+                : disabled
+                    ? 'التتبع غير مفعّل لحسابك — تواصل مع المدير لتفعيله'
+                    : null,
+        };
+    }
+
+    /**
      * Log a technician's location
      */
     static async logLocation(userId, { lat, lng, heading, speed, battery, signal_dbm, ticket_id }) {
@@ -17,8 +51,12 @@ class TrackingService {
 
         const user = userResult.rows[0];
 
-        if (!user.tracking_enabled || user.tracking_veto) {
-            throw { statusCode: 403, message: 'التتبع غير مفعّل' };
+        // رسائل مفصّلة تميّز بين (غير مفعّل) و (موقوف بحق الاعتراض)
+        if (user.tracking_veto) {
+            throw { statusCode: 403, code: 'TRACKING_VETOED', message: 'التتبع موقوف بحق الاعتراض من الإدارة — لا يمكن حفظ الموقع' };
+        }
+        if (!user.tracking_enabled) {
+            throw { statusCode: 403, code: 'TRACKING_DISABLED', message: 'التتبع غير مفعّل لحسابك — تواصل مع المدير لتفعيله ثم أعد المحاولة' };
         }
 
         const result = await query(
