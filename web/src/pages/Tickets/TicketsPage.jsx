@@ -31,7 +31,7 @@ export default function TicketsPage() {
   })
 
   const { data: usersRaw } = useQuery({
-    queryKey: ['users-list'],
+    queryKey: ['users'],
     queryFn: usersApi.getAll,
   })
 
@@ -44,9 +44,10 @@ export default function TicketsPage() {
     onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ'),
   })
 
-  const tickets = Array.isArray(ticketsRaw?.data) ? ticketsRaw.data : []
-  const allUsers = Array.isArray(usersRaw?.data) ? usersRaw.data : []
-  const technicians = allUsers.filter(u => u.role === 'technician')
+  // GET /tickets و GET /users يعيدان { items, pagination } — وليس مصفوفة مباشرة
+  const tickets = Array.isArray(ticketsRaw?.data?.items) ? ticketsRaw.data.items : []
+  const allUsers = Array.isArray(usersRaw?.data?.items) ? usersRaw.data.items : []
+  const technicians = allUsers.filter(u => u.role === 'technician' && u.is_active !== false)
 
   const filteredTickets = tickets.filter(t =>
     t.title?.toLowerCase().includes(filter.toLowerCase()) ||

@@ -1,6 +1,6 @@
 // E2E: تبويب الأجهزة + مسار GPS (صفحة التتبع للفني)
 // --------------------------------------------------
-// تتطلب API على :3000 (postgres حقيقي) — نفس ترتيب auth.spec.js
+// تتطلب API على :3000 (postgres حقيقي) + حسابات scripts/e2e_seed.mjs
 import { test, expect } from '@playwright/test'
 
 const API = process.env.E2E_API_URL || 'http://localhost:3000/api'
@@ -11,9 +11,13 @@ let created = false
 
 async function ensureUser(request) {
   if (created) return
-  await request.post(`${API}/auth/register`, {
-    data: { username: E2E_USER, password: E2E_PASS, full_name: 'E2E Runner' },
+  // التسجيل العام مغلق — الحساب من البذرة؛ نتحقق بالدخول API
+  const res = await request.post(`${API}/auth/login`, {
+    data: { username: E2E_USER, password: E2E_PASS },
   })
+  if (res.status() !== 200) {
+    throw new Error(`حساب ${E2E_USER} غير جاهز (${res.status()}) — شغّل: node /home/z/my-project/scripts/e2e_seed.mjs`)
+  }
   created = true
 }
 

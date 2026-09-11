@@ -157,4 +157,102 @@ const vetoTracking = async (req, res) => {
     }
 };
 
-module.exports = { getAll, getById, update, controlTracking, vetoTracking };
+/**
+ * @swagger
+ * /api/users:
+ *   post:
+ *     tags: [Users]
+ *     summary: إنشاء مستخدم بأي دور (المدير فقط)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username, password, full_name]
+ *             properties:
+ *               username: { type: string }
+ *               password: { type: string, minLength: 6 }
+ *               full_name: { type: string }
+ *               role: { type: string, enum: [admin, support, technician], default: technician }
+ *               phone: { type: string }
+ *               email: { type: string }
+ *     responses:
+ *       201: { description: تم إنشاء المستخدم }
+ *       409: { description: اسم المستخدم موجود مسبقاً }
+ */
+const create = async (req, res) => {
+    try {
+        const user = await UsersService.create(req.body);
+        success(res, user, 'تم إنشاء المستخدم بنجاح', 201);
+    } catch (err) {
+        error(res, err.message, err.statusCode || 500);
+    }
+};
+
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   delete:
+ *     tags: [Users]
+ *     summary: حذف مستخدم نهائياً (المدير فقط)
+ *     description: حواجز — لا حذف للذات ولا لآخر مدير نشط. مراجع القاعدة SET NULL/CASCADE
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: تم الحذف }
+ *       400: { description: حذف الذات أو آخر مدير نشط }
+ *       404: { description: غير موجود }
+ */
+const remove = async (req, res) => {
+    try {
+        const result = await UsersService.remove(req.params.id, req.user.id);
+        success(res, result, 'تم حذف المستخدم نهائياً');
+    } catch (err) {
+        error(res, err.message, err.statusCode || 500);
+    }
+};
+
+/**
+ * @swagger
+ * /api/users/{id}/password:
+ *   put:
+ *     tags: [Users]
+ *     summary: إعادة تعيين كلمة مرور مستخدم (المدير فقط)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [new_password]
+ *             properties:
+ *               new_password: { type: string, minLength: 6 }
+ *     responses:
+ *       200: { description: تم إعادة التعيين }
+ */
+const resetPassword = async (req, res) => {
+    try {
+        const { new_password } = req.body;
+        const result = await UsersService.resetPassword(req.params.id, new_password);
+        success(res, result, 'تم إعادة تعيين كلمة المرور');
+    } catch (err) {
+        error(res, err.message, err.statusCode || 500);
+    }
+};
+
+module.exports = { getAll, getById, update, controlTracking, vetoTracking, create, remove, resetPassword };

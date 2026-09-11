@@ -241,7 +241,8 @@ export default function MapPointsPage() {
     })
   }
 
-  const points = Array.isArray(data?.data) ? data.data : []
+  // GET /map-points يعيد { items, pagination } — وليس مصفوفة مباشرة
+  const points = Array.isArray(data?.data?.items) ? data.data.items : []
   const approvedPoints = points.filter(p => p.status === 'approved')
   const pendingPoints = points.filter(p => p.status === 'pending')
   const pendingCount = pendingPoints.length

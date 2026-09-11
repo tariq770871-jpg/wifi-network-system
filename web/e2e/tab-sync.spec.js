@@ -75,9 +75,13 @@ test.describe('حفظ الجهاز من نموذج الخريطة يصل لتب�
   })
 
   test('الفني يرى الأجهزة على الخريطة لكن لا يستطيع حفظ جهاز (مدير فقط)', async ({ page, request }) => {
-    await request.post(`${process.env.E2E_API_URL || 'http://localhost:3000/api'}/auth/register`, {
-      data: { username: E2E_USER, password: E2E_PASS, full_name: 'E2E Runner' },
+    // الحساب من البذرة (التسجيل العام مغلق) — نتحقق بالدخول API
+    const check = await request.post(`${process.env.E2E_API_URL || 'http://localhost:3000/api'}/auth/login`, {
+      data: { username: E2E_USER, password: E2E_PASS },
     })
+    if (check.status() !== 200) {
+      throw new Error(`حساب ${E2E_USER} غير جاهز (${check.status()}) — شغّل: node /home/z/my-project/scripts/e2e_seed.mjs`)
+    }
     await loginViaUI(page, E2E_USER, E2E_PASS)
     await page.goto('/map-points')
     await expect(page.locator('.device-marker').first()).toBeVisible({ timeout: 10000 })

@@ -1,6 +1,6 @@
 const request = require('supertest');
 const { app } = require('../src/app');
-const { query } = require('../src/shared/db');
+const { createAuthenticatedUser } = require('./helpers/auth');
 
 /**
  * Security Regression Tests
@@ -8,23 +8,40 @@ const { query } = require('../src/shared/db');
  */
 describe('Security Hardening', () => {
     describe('CRITICAL: privilege escalation via register (regression)', () => {
-        test('POST /api/auth/register REJECTS role in body with 400', async () => {
+        test('POST /api/auth/register REJECTS unauthenticated callers (التسجيل العام مغلق)', async () => {
             const res = await request(app)
                 .post('/api/auth/register')
                 .send({
                     username: `evil_admin_${Date.now()}`,
                     password: 'secret123',
                     full_name: 'Evil Attacker',
-                    role: 'admin', // محاولة تصعيد
+                    role: 'admin',
+                });
+            expect(res.status).toBe(401);
+            expect(res.body.success).toBe(false);
+        });
+
+        test('admin register REJECTS role in body with 400 (لا تصعيد من العميل)', async () => {
+            const { token } = await createAuthenticatedUser({ role: 'admin' });
+            const res = await request(app)
+                .post('/api/auth/register')
+                .set('Authorization', `Bearer ${token}`)
+                .send({
+                    username: `evil_admin_${Date.now()}`,
+                    password: 'secret123',
+                    full_name: 'Evil Attacker',
+                    role: 'admin',
                 });
             expect(res.status).toBe(400);
             expect(res.body.success).toBe(false);
         });
 
-        test('registered user is ALWAYS technician even if role smuggled via service', async () => {
+        test('registered user (by admin) is ALWAYS technician even if role smuggled via service', async () => {
+            const { token } = await createAuthenticatedUser({ role: 'admin' });
             const username = `force_tech_${Date.now()}`;
             const res = await request(app)
                 .post('/api/auth/register')
+                .set('Authorization', `Bearer ${token}`)
                 .send({
                     username,
                     password: 'secret123',
@@ -35,15 +52,7 @@ describe('Security Hardening', () => {
         });
 
         test('newly registered user cannot access admin-only endpoints', async () => {
-            const username = `rbac_check_${Date.now()}`;
-            await request(app)
-                .post('/api/auth/register')
-                .send({ username, password: 'secret123', full_name: 'RBAC Check' });
-            const login = await request(app)
-                .post('/api/auth/login')
-                .send({ username, password: 'secret123' });
-            const token = login.body?.data?.token;
-
+            const { token } = await createAuthenticatedUser({ role: 'technician' });
             const res = await request(app)
                 .post('/api/devices')
                 .set('Authorization', `Bearer ${token}`)
@@ -65,16 +74,8 @@ describe('Security Hardening', () => {
         let token;
 
         beforeAll(async () => {
-            const suffix = Date.now();
-            const username = `validator_${suffix}`;
-            await request(app)
-                .post('/api/auth/register')
-                .send({ username, password: 'secret123', full_name: 'Validator' });
-            await query("UPDATE users SET role = 'admin' WHERE username = $1", [username]);
-            const login = await request(app)
-                .post('/api/auth/login')
-                .send({ username, password: 'secret123' });
-            token = login.body?.data?.token;
+            const { token: t } = await createAuthenticatedUser({ role: 'admin', prefix: 'validator' });
+            token = t;
         });
 
         test('POST /api/tickets rejects invalid priority', async () => {

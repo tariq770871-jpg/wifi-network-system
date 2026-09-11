@@ -1,5 +1,5 @@
 // E2E: مصادقة + حماية المسارات + نقاط الخريطة
-// المستخدم التجريبي يُنشأ عبر API في first-run (اسم يبدأ بـ e2e_ لسهولة التنظيف)
+// المستخدم التجريبي يُنشأ مسبقاً عبر scripts/e2e_seed.mjs (التسجيل API للمدير فقط)
 import { test, expect } from '@playwright/test'
 
 const API = process.env.E2E_API_URL || 'http://localhost:3000/api'
@@ -10,10 +10,13 @@ let created = false
 
 async function ensureUser(request) {
   if (created) return
-  // تسجيل يفشل إن كان موجوداً — كلاهما مقبول
-  await request.post(`${API}/auth/register`, {
-    data: { username: E2E_USER, password: E2E_PASS, full_name: 'E2E Runner' },
+  // التسجيل العام مغلق — الحساب يجب أن يكون موجوداً من البذرة؛ نتحقق بالدخول API
+  const res = await request.post(`${API}/auth/login`, {
+    data: { username: E2E_USER, password: E2E_PASS },
   })
+  if (res.status() !== 200) {
+    throw new Error(`حساب ${E2E_USER} غير جاهز (${res.status()}) — شغّل: node /home/z/my-project/scripts/e2e_seed.mjs`)
+  }
   created = true
 }
 
