@@ -151,6 +151,14 @@ const update = async (req, res) => {
     try {
         const { id } = req.params;
         const { title, description, customer_name, customer_phone, priority, status } = req.body;
+        // BUGFIX: جلب الحالة القديمة قبل التحديث — الكود السابق كان يقارن
+        // ticket.status (الجديدة بعد UPDATE) بـ req.body.status فكانا متساويين
+        // دائماً والإشعار ticket:updated لم يُرسل مطلقاً
+        const before = await query('SELECT status FROM tickets WHERE id = $1', [id]);
+        if (before.rows.length === 0) {
+            return error(res, 'البلاغ غير موجود', 404);
+        }
+        const oldStatus = before.rows[0].status;
         const result = await query(
             `UPDATE tickets SET
                 title = COALESCE($1, title),
@@ -163,17 +171,14 @@ const update = async (req, res) => {
              WHERE id = $7 RETURNING *`,
             [title, description, customer_name, customer_phone, priority, status, id]
         );
-        if (result.rows.length === 0) {
-            return error(res, 'البلاغ غير موجود', 404);
-        }
         const ticket = result.rows[0];
         success(res, ticket, 'تم تحديث البلاغ');
 
-        // Emit real-time notification on status change
-        if (req.io && req.body.status && req.body.status !== ticket.status) {
+        // Emit real-time notification ONLY on actual status change
+        if (req.io && status && status !== oldStatus) {
             const statusLabels = { pending: 'قيد الانتظار', assigned: 'معين', in_progress: 'قيد التنفيذ', completed: 'مكتمل', cancelled: 'ملغي' };
             req.io.to('admin').to('support').emit('ticket:updated', {
-                message: `تم تغيير حالة بلاغ "${ticket.title}" إلى ${statusLabels[req.body.status] || req.body.status}`,
+                message: `تم تغيير حالة بلاغ "${ticket.title}" إلى ${statusLabels[status] || status}`,
                 data: ticket,
             });
         }

@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../hooks/useAuth'
-import { LayoutDashboard, Ticket, MapPin, Map, Router, BarChart3, LogOut, Menu, Settings, Users as UsersIcon, X, Sun, Moon, Bell, ChevronLeft, Search } from 'lucide-react'
+import { LayoutDashboard, Ticket, MapPin, Map, Router, BarChart3, LogOut, Menu, Settings, Users as UsersIcon, X, Sun, Moon, Bell, ChevronLeft, Search, CreditCard, Wifi } from 'lucide-react'
 import { useState, useEffect, useMemo, useCallback, useContext } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
@@ -15,6 +15,8 @@ const allNavItems = [
   { path: '/tracking', labelKey: 'nav.tracking', icon: MapPin, roles: ['admin','support','technician'] },
   { path: '/map-points', labelKey: 'nav.mapPoints', icon: Map, roles: ['admin','support','technician'] },
   { path: '/devices', labelKey: 'nav.devices', icon: Router, roles: ['admin','support','technician'] },
+  { path: '/subscriptions', labelKey: 'nav.subscriptions', icon: CreditCard, roles: ['admin','support','technician'] },
+  { path: '/networks', labelKey: 'nav.networks', icon: Wifi, roles: ['admin','support','technician'] },
   { path: '/reports', labelKey: 'nav.reports', icon: BarChart3, roles: ['admin','support'] },
   { path: '/users', labelKey: 'nav.users', icon: UsersIcon, roles: ['admin'] },
   { path: '/settings', labelKey: 'nav.settings', icon: Settings, roles: ['admin','support','technician'] },
@@ -35,6 +37,8 @@ export default function Layout() {
     typeof window !== 'undefined' ? window.innerWidth >= 1024 : false
   )
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  // BUGFIX: كانت «obileOpen» — ReferenceError ينهار كلياً على الجوال (سطح المكتب
+  // ينجو فقط لأن التقييم القصير لا يلمس mobileOpen) — اكتشفتها اختبارات iPhone
   const [mobileOpen, setMobileOpen] = useState(false)
   const [themeMode, setThemeMode] = useState(getInitialThemeMode)
   const [notifications, setNotifications] = useState([])
@@ -108,6 +112,8 @@ export default function Layout() {
         queryClient.invalidateQueries({ queryKey: ['devices'] })
         queryClient.invalidateQueries({ queryKey: ['devices-map'] })
         queryClient.invalidateQueries({ queryKey: ['map-points'] })
+        queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+        queryClient.invalidateQueries({ queryKey: ['networks'] })
       }, 60000)
       return () => clearInterval(interval)
     }
@@ -159,7 +165,7 @@ export default function Layout() {
       <aside aria-label="القائمة الجانبية" className={`${
         isDesktop
           ? `${sidebarOpen ? 'w-64' : 'w-[72px]'} relative flex-shrink-0`
-          : `fixed top-0 right-0 h-full w-72 z-50 ${mobileOpen ? 'translate-x-0' : 'translate-x-full'}`
+          : `fixed top-0 right-0 h-full w-72 z-50 ${mobileOpen ? 'translate-x-0 visible pointer-events-auto' : 'translate-x-full invisible pointer-events-none'}`
       } bg-white dark:bg-gray-800 border-l border-gray-200/80 dark:border-gray-700/50 transition-all duration-300 flex flex-col`}>
         {/* Logo area */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100 dark:border-gray-700/50 flex-shrink-0">

@@ -46,6 +46,10 @@ router.put('/:id',
         body('priority').optional().isIn(['low', 'medium', 'high', 'urgent']),
     ],
     validateRequest,
+    // SECURITY: كان مفتوحاً لأي فني — يستطيع تعديل أي بلاغ وتغيير حالته وحتى أولويته
+    // متجاوزاً مساري start/complete المخصصين. تعديل محتوى البلاغ إدارة، والفني
+    // يحدّث حالة عمله عبر /start و /complete فقط.
+    authorize('admin', 'support'),
     ticketsController.update
 );
 router.delete('/:id',

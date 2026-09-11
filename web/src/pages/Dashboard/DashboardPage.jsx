@@ -16,6 +16,9 @@ import {
   WifiOff,
   Wrench,
   Map as MapIcon,
+  CreditCard,
+  CalendarClock,
+  CircleDollarSign,
 } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -56,6 +59,7 @@ export default function DashboardPage() {
   // مزامنة التبويبات: الأجهزة ونقاط الخريطة معروضة مباشرة من الخادم
   const devices = stats.devices || {}
   const mapPoints = Array.isArray(stats.map_points) ? stats.map_points : []
+  const subscriptions = stats.subscriptions || {}
   const pendingPoints = mapPoints.find(m => m.status === 'pending')?.count || 0
 
   const pendingCount = tickets.find(t => t.status === 'pending')?.count || 0
@@ -94,6 +98,20 @@ export default function DashboardPage() {
           <StatCard title="أجهزة متصلة" value={devices.online || 0} icon={Wifi} color="green" index={1} />
           <StatCard title="غير متصلة" value={devices.offline || 0} icon={WifiOff} color="orange" index={2} />
           <StatCard title="قيد الصيانة" value={devices.maintenance || 0} icon={Wrench} color="purple" index={3} />
+        </div>
+      </div>
+
+      {/* Subscriptions Cards — مزامنة مباشرة مع تبويب الاشتراكات */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400">الاشتراكات</h2>
+          <Link to="/subscriptions" className="text-xs font-medium text-primary hover:underline">فتح تبويب الاشتراكات ←</Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
+          <StatCard title="اشتراكات نشطة" value={subscriptions.active || 0} icon={CreditCard} color="green" index={0} />
+          <StatCard title="منتهية" value={subscriptions.expired || 0} icon={ArrowDownLeft} color="red" index={1} />
+          <StatCard title="تنتهي خلال 7 أيام" value={subscriptions.expiring_soon || 0} icon={CalendarClock} color="orange" index={2} />
+          <StatCard title="الإيراد الشهري" value={Number(subscriptions.monthly_revenue || 0).toLocaleString('ar')} icon={CircleDollarSign} color="blue" index={3} />
         </div>
       </div>
 

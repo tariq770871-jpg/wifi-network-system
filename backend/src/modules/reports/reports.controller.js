@@ -74,12 +74,25 @@ const getDashboardStats = async (req, res) => {
             GROUP BY status
         `);
 
+        // مزامنة التبويبات: الداشبورد يعكس الاشتراكات (نشط/منتهي/ينتهي قريباً/الإيراد الشهري)
+        const subsStats = await query(`
+            SELECT
+                COUNT(*)::int AS total,
+                COUNT(CASE WHEN status = 'active' THEN 1 END)::int AS active,
+                COUNT(CASE WHEN status = 'suspended' THEN 1 END)::int AS suspended,
+                COUNT(CASE WHEN end_date < CURRENT_DATE AND status <> 'cancelled' THEN 1 END)::int AS expired,
+                COUNT(CASE WHEN status = 'active' AND end_date >= CURRENT_DATE AND end_date <= CURRENT_DATE + INTERVAL '7 days' THEN 1 END)::int AS expiring_soon,
+                COALESCE(SUM(CASE WHEN status = 'active' THEN monthly_price ELSE 0 END), 0)::float AS monthly_revenue
+            FROM subscriptions
+        `);
+
         success(res, {
             tickets: ticketsStats.rows,
             technicians: techniciansStats.rows[0],
             monthly_tickets: monthlyTickets.rows,
             devices: devicesStats.rows[0],
-            map_points: mapPointsStats.rows
+            map_points: mapPointsStats.rows,
+            subscriptions: subsStats.rows[0]
         });
     } catch (err) {
         error(res, err.message, 500);

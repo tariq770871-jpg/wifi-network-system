@@ -155,7 +155,29 @@ const migrations = [
     // فهرس البحث السريع بالاسم/الرقم التسلسلي/MAC/IP
     `CREATE INDEX IF NOT EXISTS devices_name_trgm_idx ON devices (name)`,
     `CREATE INDEX IF NOT EXISTS devices_serial_idx ON devices (serial_number)`,
-    `CREATE INDEX IF NOT EXISTS devices_mac_idx ON devices (mac_address)`
+    `CREATE INDEX IF NOT EXISTS devices_mac_idx ON devices (mac_address)`,
+
+    // ─── الاشتراكات: جوهر إدارة مزوّد خدمة WiFi ───
+    // اشتراك عميل على جهاز/نقطة: خطة + سعر شهري + فترة صلاحية + حالة
+    `CREATE TABLE IF NOT EXISTS subscriptions (
+        id SERIAL PRIMARY KEY,
+        customer_name VARCHAR(100) NOT NULL,
+        customer_phone VARCHAR(20),
+        customer_address VARCHAR(255),
+        device_id INTEGER REFERENCES devices(id) ON DELETE SET NULL,
+        plan VARCHAR(50) NOT NULL DEFAULT 'basic',
+        monthly_price NUMERIC(10,2) NOT NULL DEFAULT 0,
+        start_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        end_date DATE NOT NULL,
+        status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active','expired','suspended','cancelled')),
+        notes VARCHAR(1000),
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS subscriptions_status_idx ON subscriptions (status)`,
+    `CREATE INDEX IF NOT EXISTS subscriptions_end_date_idx ON subscriptions (end_date)`,
+    `CREATE INDEX IF NOT EXISTS subscriptions_device_idx ON subscriptions (device_id)`
 ];
 
 async function migrate() {

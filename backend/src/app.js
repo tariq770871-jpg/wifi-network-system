@@ -26,6 +26,7 @@ const { reportsRoutes } = require('./modules/reports');
 const { signalRoutes } = require('./modules/signal');
 const { networksRoutes } = require('./modules/networks');
 const { devicesRoutes } = require('./modules/devices');
+const { subscriptionsRoutes } = require('./modules/subscriptions');
 
 const specs = require('./shared/swagger');
 
@@ -184,6 +185,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/signal', signalRoutes);
 app.use('/api/networks', networksRoutes);
 app.use('/api/devices', devicesRoutes);
+app.use('/api/subscriptions', subscriptionsRoutes);
 
 // 404
 app.use((req, res) => {

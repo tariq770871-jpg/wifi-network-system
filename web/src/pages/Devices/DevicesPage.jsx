@@ -7,8 +7,9 @@ import DeviceFormModal from './DeviceFormModal'
 import toast from 'react-hot-toast'
 import {
   Router, Plus, Search, Loader2, MapPin, Wifi, WifiOff, Wrench, Radio,
-  Pencil, Trash2, Activity, ChevronDown, Inbox, Satellite, ClipboardList,
+  Pencil, Trash2, Activity, ChevronDown, Inbox, Satellite, ClipboardList, Download,
 } from 'lucide-react'
+import { downloadCSV } from '../../utils/csv'
 
 const TYPE_LABELS = {
   router: 'راوتر', switch: 'سويتش', access_point: 'نقطة وصول', antenna: 'هوائي', other: 'أخرى',
@@ -126,14 +127,45 @@ export default function DevicesPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">الأجهزة</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">إدارة أجهزة الشبكة وبيانات التركيب والمواقع</p>
         </div>
-        {isAdmin && (
+        <div className="flex items-center gap-2">
+          {/* تصدير CSV — للبيانات المعروضة حالياً (كل الأدوار، متاح مع أو بدون الإضافة) */}
           <button
-            onClick={() => setFormTarget('new')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm shadow-emerald-500/25 transition-all"
+            onClick={() => {
+              const ok = downloadCSV(
+                `devices-${new Date().toISOString().slice(0, 10)}.csv`,
+                devices,
+                [
+                  { label: 'الاسم', value: (d) => d.name },
+                  { label: 'النوع', value: (d) => TYPE_LABELS[d.device_type] || d.device_type },
+                  { label: 'الموديل', value: (d) => d.model },
+                  { label: 'المصنع', value: (d) => d.manufacturer },
+                  { label: 'الرقم التسلسلي', value: (d) => d.serial_number },
+                  { label: 'MAC', value: (d) => d.mac_address },
+                  { label: 'IP', value: (d) => d.ip_address },
+                  { label: 'الحالة', value: (d) => STATUS_LABELS[d.status] || d.status },
+                  { label: 'خط العرض', value: (d) => d.location_lat },
+                  { label: 'خط الطول', value: (d) => d.location_lng },
+                  { label: 'مصدر الإحداثية', value: (d) => SOURCE_BADGES[d.coordinate_source]?.label || d.coordinate_source },
+                  { label: 'تاريخ التركيب', value: (d) => d.installed_at },
+                ]
+              )
+              if (ok) toast.success(`تم تصدير ${devices.length} جهاز`)
+            }}
+            disabled={devices.length === 0}
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-all"
+            aria-label="تصدير الأجهزة CSV"
           >
-            <Plus size={15} /> إضافة جهاز
+            <Download size={15} /> تصدير CSV
           </button>
-        )}
+          {isAdmin && (
+            <button
+              onClick={() => setFormTarget('new')}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm shadow-emerald-500/25 transition-all"
+            >
+              <Plus size={15} /> إضافة جهاز
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search + Filters */}

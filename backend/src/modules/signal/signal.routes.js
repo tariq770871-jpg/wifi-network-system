@@ -33,8 +33,15 @@ router.get('/heatmap',
     signal.getHeatmap
 );
 
-// قائمة القراءات (مرقّمة)
-router.get('/readings', signal.listReadings);
+// قائمة القراءات (مرقّمة) — الترقيم والحدود مفروضة (كانت بلا تحقق)
+router.get('/readings',
+    [
+        query('page').optional().isInt({ min: 1 }),
+        query('limit').optional().isInt({ min: 1, max: 100 }),
+    ],
+    validateRequest,
+    signal.listReadings
+);
 
 // إحصائيات التغطية
 router.get('/coverage', signal.getCoverageStats);

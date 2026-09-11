@@ -41,6 +41,11 @@ const getAll = async (req, res) => {
  */
 const getById = async (req, res) => {
     try {
+        // SECURITY: كان مفتوحاً لكل المصادقين — أي فني يستطيع قراءة هاتف وبريد
+        // أي مستخدم. المدير/الدعم يرون الكل، وبقية الأدوار أنفسهم فقط.
+        if (!['admin', 'support'].includes(req.user.role) && req.user.id !== Number(req.params.id)) {
+            return error(res, 'لا تملك صلاحية عرض هذا المستخدم', 403);
+        }
         const user = await UsersService.getById(req.params.id);
         success(res, user);
     } catch (err) {
