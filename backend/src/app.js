@@ -123,9 +123,11 @@ app.use(cors({
 }));
 
 // Rate limiting
+// الحد قابل للضبط عبر RATE_LIMIT_MAX — الإنتاج الافتراضي 200/15د،
+// وترفعه بيئة الاختبار المحلية (E2E) لأن الحزمة الكاملة تتجاوز 200 طلب من نفس IP
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 200,
+    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 200,
     message: { success: false, error: 'طلبات كثيرة جداً، حاول لاحقاً' },
     standardHeaders: true,
     legacyHeaders: false,

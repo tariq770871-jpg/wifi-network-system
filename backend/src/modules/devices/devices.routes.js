@@ -14,9 +14,11 @@ router.get('/',
         query('status').optional().isIn(['online', 'offline', 'maintenance']),
         query('device_type').optional().isIn(['router', 'switch', 'access_point', 'antenna', 'other']),
         query('coordinate_source').optional().isIn(['gps', 'manual', 'mikrotik']),
+        query('has_location').optional().isBoolean().toBoolean(),
         query('search').optional().isString().trim().isLength({ max: 100 }),
         query('page').optional().isInt({ min: 1 }),
-        query('limit').optional().isInt({ min: 1, max: 100 }),
+        // الحد 500 لطلبات الخريطة (has_location=true) — كل الأجهزة المواقعية في طلب واحد
+        query('limit').optional().isInt({ min: 1, max: 500 }),
     ],
     validateRequest,
     devices.listDevices

@@ -72,8 +72,12 @@ export default function DeviceFormModal({ device, onClose, canEdit }) {
   const mutation = useMutation({
     mutationFn: (payload) => (isEdit ? devicesApi.update(device.id, payload) : devicesApi.create(payload)),
     onSuccess: (resp) => {
+      // مزامنة عابرة للتبويبات: كل مساحة عرض للجهاز تُحدّث فوراً
       queryClient.invalidateQueries({ queryKey: ['devices'] })
-      toast.success(resp?.message || (isEdit ? 'تم تحديث الجهاز' : 'تمت إضافة الجهاز'))
+      queryClient.invalidateQueries({ queryKey: ['devices-map'] })
+      queryClient.invalidateQueries({ queryKey: ['map-points'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      toast.success(isEdit ? 'تم تحديث الجهاز — تزامنت القائمة والخريطة والداشبورد' : 'تمت إضافة الجهاز — يظهر الآن في الأجهزة والخريطة والداشبورد')
       onClose()
     },
     onError: (err) => toast.error(err.response?.data?.error || 'حدث خطأ أثناء الحفظ', { duration: 6000 }),
@@ -160,8 +164,8 @@ export default function DeviceFormModal({ device, onClose, canEdit }) {
           {/* البيانات الأساسية */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1.5">اسم الجهاز *</label>
-              <input className={inputCls} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="مثال: راوتر الحي الرئيسي" />
+              <label htmlFor="device-name" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1.5">اسم الجهاز *</label>
+              <input id="device-name" className={inputCls} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="مثال: راوتر الحي الرئيسي" />
               {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
             </div>
             <div>

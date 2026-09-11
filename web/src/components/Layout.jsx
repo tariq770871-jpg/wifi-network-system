@@ -100,10 +100,14 @@ export default function Layout() {
     }
 
     // بديل Serverless (Vercel): لا WebSocket — نحدّث البيانات دورياً بدلاً من الاتصال الفاشل
+    // المزامنة تشمل كل التبويبات: البلاغات، الداشبورد، الأجهزة، الخريطة
     if (!REALTIME_ENABLED) {
       const interval = setInterval(() => {
         queryClient.invalidateQueries({ queryKey: ['tickets'] })
         queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+        queryClient.invalidateQueries({ queryKey: ['devices'] })
+        queryClient.invalidateQueries({ queryKey: ['devices-map'] })
+        queryClient.invalidateQueries({ queryKey: ['map-points'] })
       }, 60000)
       return () => clearInterval(interval)
     }

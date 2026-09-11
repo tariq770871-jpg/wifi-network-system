@@ -56,10 +56,30 @@ const getDashboardStats = async (req, res) => {
             ORDER BY date
         `);
 
+        // مزامنة التبويبات: الداشبورد يعكس الأجهزة ونقاط الخريطة لحظياً
+        const devicesStats = await query(`
+            SELECT
+                COUNT(*)::int AS total,
+                COUNT(CASE WHEN status = 'online' THEN 1 END)::int AS online,
+                COUNT(CASE WHEN status = 'offline' THEN 1 END)::int AS offline,
+                COUNT(CASE WHEN status = 'maintenance' THEN 1 END)::int AS maintenance,
+                COUNT(CASE WHEN location_lat IS NOT NULL AND location_lng IS NOT NULL THEN 1 END)::int AS with_location,
+                COUNT(CASE WHEN is_mikrotik_linked THEN 1 END)::int AS mikrotik_linked
+            FROM devices
+        `);
+
+        const mapPointsStats = await query(`
+            SELECT status, COUNT(*)::int AS count
+            FROM map_points
+            GROUP BY status
+        `);
+
         success(res, {
             tickets: ticketsStats.rows,
             technicians: techniciansStats.rows[0],
-            monthly_tickets: monthlyTickets.rows
+            monthly_tickets: monthlyTickets.rows,
+            devices: devicesStats.rows[0],
+            map_points: mapPointsStats.rows
         });
     } catch (err) {
         error(res, err.message, 500);

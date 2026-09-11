@@ -29,7 +29,7 @@ test.describe('تبويب الأجهزة', () => {
   test('رابط الأجهزة ظاهر في القائمة وصفحتها تعمل بالبحث والتصفية', async ({ page, request }) => {
     await ensureUser(request)
     await loginViaUI(page)
-    await page.getByRole('link', { name: 'الأجهزة' }).click()
+    await page.getByRole('link', { name: 'الأجهزة', exact: true }).click()
     await page.waitForURL('/devices')
     await expect(page.getByRole('heading', { name: 'الأجهزة' })).toBeVisible()
     await expect(page.getByRole('textbox', { name: 'بحث في الأجهزة' })).toBeVisible()

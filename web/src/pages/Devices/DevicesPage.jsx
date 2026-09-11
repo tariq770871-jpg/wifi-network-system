@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { devicesApi } from '../../services/devices.service'
 import { useAuthStore } from '../../hooks/useAuth'
 import DeviceFormModal from './DeviceFormModal'
@@ -28,6 +29,11 @@ export default function DevicesPage() {
   const { user } = useAuthStore()
   const isAdmin = user?.role === 'admin'
   const queryClient = useQueryClient()
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // مزامنة التبويبات: الوصول من popup الخريطة يفتح تفاصيل الجهاز مباشرة
+  const focusDeviceId = location.state?.focusDeviceId ?? null
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -56,10 +62,32 @@ export default function DevicesPage() {
   const devices = Array.isArray(data?.data?.items) ? data.data.items : []
   const pagination = data?.data?.pagination
 
+  // جلب جهاز محدد عند القدوم من خريطة النظام (فتح التفاصيل تلقائياً)
+  const { data: focusData } = useQuery({
+    queryKey: ['device', focusDeviceId],
+    queryFn: () => devicesApi.get(focusDeviceId),
+    enabled: focusDeviceId != null,
+  })
+  useEffect(() => {
+    if (focusDeviceId != null && focusData?.data) {
+      setDetailsDevice(focusData.data)
+      // مسح الحالة حتى لا يعاد الفتح عند كل عودة للصفحة
+      navigate('/devices', { replace: true, state: {} })
+    }
+  }, [focusDeviceId, focusData, navigate])
+
+  // إبطال موحّد: أي تغيير على جهاز ينعكس على كل التبويبات (القائمة + الخريطة + الداشبورد)
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ['devices'] })
+    queryClient.invalidateQueries({ queryKey: ['devices-map'] })
+    queryClient.invalidateQueries({ queryKey: ['map-points'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+  }
+
   const deleteMutation = useMutation({
     mutationFn: (id) => devicesApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      invalidateAll()
       toast.success('تم حذف الجهاز')
       setDetailsDevice(null)
     },
@@ -70,7 +98,7 @@ export default function DevicesPage() {
     mutationFn: (id) => devicesApi.testConnection(id),
     onSuccess: (resp) => {
       setTestingId(null)
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      invalidateAll() // الحالة (متصل/غير متصل) تنعكس على الخريطة والداشبورد فوراً
       if (resp?.data?.success) {
         toast.success(`الاتصال ناجح${resp.data.ssid ? ` — SSID: ${resp.data.ssid}` : ''}`, { duration: 5000 })
       } else {
@@ -299,6 +327,7 @@ export default function DevicesPage() {
 
 /** لوحة تفاصيل الجهاز — كل بيانات الجهاز + قراءة الموارد الحية */
 function DeviceDetails({ device: d, onClose, isAdmin, onEdit, onTest, testing, onDelete }) {
+  const navigate = useNavigate()
   const { data: liveData } = useQuery({
     queryKey: ['device-status', d.id],
     queryFn: () => devicesApi.status(d.id),
@@ -393,16 +422,24 @@ function DeviceDetails({ device: d, onClose, isAdmin, onEdit, onTest, testing, o
             ))}
           </dl>
 
-          {/* Location map link */}
+          {/* Location links */}
           {d.location_lat != null && (
-            <a
-              href={`https://www.openstreetmap.org/?mlat=${d.location_lat}&mlon=${d.location_lng}#map=17/${d.location_lat}/${d.location_lng}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-primary hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors border border-gray-200 dark:border-gray-600"
-            >
-              <Satellite size={15} /> عرض الموقع على الخريطة
-            </a>
+            <div className="space-y-2">
+              <button
+                onClick={() => navigate('/map-points', { state: { focusDeviceId: d.id } })}
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-primary hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors border border-gray-200 dark:border-gray-600"
+              >
+                <Satellite size={15} /> عرض على خريطة النظام
+              </button>
+              <a
+                href={`https://www.openstreetmap.org/?mlat=${d.location_lat}&mlon=${d.location_lng}#map=17/${d.location_lat}/${d.location_lng}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border border-gray-200 dark:border-gray-600"
+              >
+                <MapPin size={15} /> فتح في OpenStreetMap الخارجية
+              </a>
+            </div>
           )}
 
           {/* Admin actions */}

@@ -29,6 +29,10 @@ async function listDevices(queryParams = {}) {
         params.push(coordinate_source);
         conditions.push(`d.coordinate_source = $${params.length}`);
     }
+    // فلتر الأجهزة ذات الموقع فقط — تُستخدم لرسم الأجهزة على الخريطة (مزامنة تبويب الخريطة)
+    if (queryParams.has_location === 'true' || queryParams.has_location === true) {
+        conditions.push('d.location_lat IS NOT NULL AND d.location_lng IS NOT NULL');
+    }
     // بحث نصي موحّد: الاسم، الموديل، المصنّع، الرقم التسلسلي، MAC، IP
     if (search) {
         params.push(`%${search}%`);

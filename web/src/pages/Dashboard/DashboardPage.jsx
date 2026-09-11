@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { reportsApi } from '../../services/reports.service'
 import StatCard from '../../components/StatCard'
 import {
@@ -8,10 +9,13 @@ import {
   CheckCircle,
   Clock,
   MapPin,
-  TrendingUp,
+  Router,
   ArrowUpRight,
   ArrowDownLeft,
-  Wifi
+  Wifi,
+  WifiOff,
+  Wrench,
+  Map as MapIcon,
 } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -49,6 +53,10 @@ export default function DashboardPage() {
   const stats = statsData?.data || {}
   const tickets = stats.tickets || []
   const technicians = stats.technicians || {}
+  // مزامنة التبويبات: الأجهزة ونقاط الخريطة معروضة مباشرة من الخادم
+  const devices = stats.devices || {}
+  const mapPoints = Array.isArray(stats.map_points) ? stats.map_points : []
+  const pendingPoints = mapPoints.find(m => m.status === 'pending')?.count || 0
 
   const pendingCount = tickets.find(t => t.status === 'pending')?.count || 0
   const inProgressCount = tickets.find(t => t.status === 'in_progress')?.count || 0
@@ -75,8 +83,51 @@ export default function DashboardPage() {
         <StatCard title="مكتملة" value={completedCount} icon={CheckCircle} color="green" index={3} />
       </div>
 
+      {/* Devices Cards — مزامنة مباشرة مع تبويب الأجهزة */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400">حالة الأجهزة</h2>
+          <Link to="/devices" className="text-xs font-medium text-primary hover:underline">فتح تبويب الأجهزة ←</Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
+          <StatCard title="إجمالي الأجهزة" value={devices.total || 0} icon={Router} color="blue" index={0} />
+          <StatCard title="أجهزة متصلة" value={devices.online || 0} icon={Wifi} color="green" index={1} />
+          <StatCard title="غير متصلة" value={devices.offline || 0} icon={WifiOff} color="orange" index={2} />
+          <StatCard title="قيد الصيانة" value={devices.maintenance || 0} icon={Wrench} color="purple" index={3} />
+        </div>
+      </div>
+
       {/* Bottom Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Pending Map Points — مزامنة مع تبويب الخريطة */}
+        <Link
+          to="/map-points"
+          className="card p-6 animate-fade-in hover:shadow-lg transition-all group"
+          style={{ animationDelay: '0.16s' }}
+          aria-label="مراجعة نقاط الخريطة المعلقة"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="gradient-orange p-2.5 rounded-xl text-white">
+                <MapIcon size={20} />
+              </div>
+              <h2 className="text-base font-bold text-gray-900 dark:text-white">نقاط بانتظار المراجعة</h2>
+            </div>
+            <ArrowUpRight size={16} className="text-gray-300 group-hover:text-primary transition-colors" />
+          </div>
+          <div className="flex items-end gap-3">
+            <span className={`text-4xl font-bold tracking-tight ${pendingPoints > 0 ? 'text-amber-500' : 'text-gray-900 dark:text-white'}`}>
+              {pendingPoints}
+            </span>
+            <span className="text-gray-400 dark:text-gray-500 text-sm mb-1.5">
+              {pendingPoints > 0 ? 'نقاط تحتاج قرارك على الخريطة' : 'لا نقاط معلقة — كل شيء مراجَع'}
+            </span>
+          </div>
+          <div className="mt-4 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-full gradient-orange rounded-full transition-all duration-700" style={{ width: `${Math.min(100, pendingPoints * 20)}%` }} />
+          </div>
+        </Link>
+
         {/* Active Technicians */}
         <div className="card p-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
           <div className="flex items-center justify-between mb-6">
