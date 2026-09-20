@@ -3,9 +3,10 @@
 // تغطي:
 //   1) الدخول من شاشة هاتف (iPhone 13) يعمل
 //   2) القائمة الجانبية المخفية بـ visibility:hidden على الجوال (لا روابط نقر خفي)
-//   3) زر الهامبرغر يفتح القائمة والتنقل للصفحات الجديدة سليم
-//   4) صفحة الاشتراكات تعمل على الجوال بلا كسر تخطيط (لا تمرير أفقي)
+//   3) زر الهامبرغر يفتح القائمة والتنقل للصفحات سليم
+//   4) صفحة نقاط الخريطة تعمل على الجوال بلا كسر تخطيط (لا تمرير أفقي)
 //   5) صفحة الأجهزة تعمل على الجوال
+// (تبويبا الاشتراكات/الشبكات أُزيليا من الواجهة بطلب المستخدم — حُذفت مواصفاتهما)
 // محاكاة هاتف على محرك الإنتاج (chromium): viewport الجهاز + touch + hasTouch
 // (اسم الجهاز «iPhone 13» يستخدم webkit افتراضياً — غير مثبت محلياً — لذا نستخرج
 //  أبعاد الجهاز ونفرض browserName chromium لاختبار التخطيط والتفاعل)
@@ -48,22 +49,22 @@ test.describe('الجوال — iPhone 13', () => {
     await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible()
   })
 
-  test('القائمة تفتح بالهامبرغر والتنقل للاشتراكات سليم بلا تمرير أفقي', async ({ page }) => {
+  test('القائمة تفتح بالهامبرغر والتنقل لنقاط الخريطة سليم بلا تمرير أفقي', async ({ page }) => {
     await login(page)
 
     // قبل الفتح: الشريط الجانبي مخفي فعلياً (visibility:hidden — إصلاح الوصولية)
     const asideVisible = await page.evaluate(() => getComputedStyle(document.querySelector('aside')).visibility)
     expect(asideVisible).toBe('hidden')
 
-    await navigateMobile(page, 'الاشتراكات', '/subscriptions')
+    await navigateMobile(page, 'نقاط الخريطة', '/map-points')
 
     // الصفحة تعمل بلا تمرير أفقي (كسر تخطيط)
     const horizontalOverflow = await page.evaluate(() => {
       return document.documentElement.scrollWidth > document.documentElement.clientWidth + 2
     })
     expect(horizontalOverflow).toBe(false)
-    // بطاقات الإحصاء ظاهرة
-    await expect(page.getByText('نشطة', { exact: true }).first()).toBeVisible()
+    // زر الإضافة ظاهر للمدير (معيار جاهزية الصفحة)
+    await expect(page.getByRole('button', { name: 'إضافة نقطة / جهاز' })).toBeVisible()
   })
 
   test('صفحة الأجهزة تعمل على الجوال مع البحث والتصدير', async ({ page }) => {
@@ -74,9 +75,9 @@ test.describe('الجوال — iPhone 13', () => {
     await expect(page.getByRole('button', { name: 'تصدير الأجهزة CSV' })).toBeVisible()
   })
 
-  test('الشبكات تعمل على الجوال (التبويب الجديد)', async ({ page }) => {
+  test('التقارير تظهر للمدير على الجوال (بديل التبويب المحذوف — تغطية تنقل إضافية)', async ({ page }) => {
     await login(page)
-    await navigateMobile(page, 'الشبكات', '/networks')
-    await expect(page.getByRole('heading', { name: 'الشبكات' })).toBeVisible()
+    await navigateMobile(page, 'التقارير', '/reports')
+    await expect(page.getByRole('heading', { name: 'التقارير' })).toBeVisible()
   })
 })

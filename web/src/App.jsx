@@ -14,8 +14,6 @@ const TicketsPage = lazy(() => import('./pages/Tickets/TicketsPage'))
 const TrackingPage = lazy(() => import('./pages/Tracking/TrackingPage'))
 const MapPointsPage = lazy(() => import('./pages/MapPoints/MapPointsPage'))
 const DevicesPage = lazy(() => import('./pages/Devices/DevicesPage'))
-const SubscriptionsPage = lazy(() => import('./pages/Subscriptions/SubscriptionsPage'))
-const NetworksPage = lazy(() => import('./pages/Networks/NetworksPage'))
 const ReportsPage = lazy(() => import('./pages/Reports/ReportsPage'))
 const SettingsPage = lazy(() => import('./pages/Settings/SettingsPage'))
 const UsersPage = lazy(() => import('./pages/Users/UsersPage'))
@@ -73,16 +71,7 @@ function App() {
                   path="/devices"
                   element={<RoleRoute roles={['admin', 'support', 'technician']}><DevicesPage /></RoleRoute>}
                 />
-                {/* الاشتراكات: القراءة لكل الأدوار، الكتابة للمدير/الدعم (مفروضة في الخلفية) */}
-                <Route
-                  path="/subscriptions"
-                  element={<RoleRoute roles={['admin', 'support', 'technician']}><SubscriptionsPage /></RoleRoute>}
-                />
-                {/* الشبكات: القراءة لكل الأدوار، الكتابة للمدير/الدعم (مفروضة في الخلفية) */}
-                <Route
-                  path="/networks"
-                  element={<RoleRoute roles={['admin', 'support', 'technician']}><NetworksPage /></RoleRoute>}
-                />
+                {/* الاشتراكات والشبكات: أُزيل تبويباهما من الواجهة بطلب المستخدم — الخلفية تبقى سليمة */}
                 <Route
                   path="/reports"
                   element={<RoleRoute roles={['admin', 'support']}><ReportsPage /></RoleRoute>}

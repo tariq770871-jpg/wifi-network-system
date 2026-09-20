@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../hooks/useAuth'
-import { LayoutDashboard, Ticket, MapPin, Map, Router, BarChart3, LogOut, Menu, Settings, Users as UsersIcon, X, Sun, Moon, Bell, ChevronLeft, Search, CreditCard, Wifi } from 'lucide-react'
+import { LayoutDashboard, Ticket, MapPin, Map, Router, BarChart3, LogOut, Menu, Settings, Users as UsersIcon, X, Sun, Moon, Bell, ChevronLeft, Search } from 'lucide-react'
 import { useState, useEffect, useMemo, useCallback, useContext } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
@@ -15,8 +15,6 @@ const allNavItems = [
   { path: '/tracking', labelKey: 'nav.tracking', icon: MapPin, roles: ['admin','support','technician'] },
   { path: '/map-points', labelKey: 'nav.mapPoints', icon: Map, roles: ['admin','support','technician'] },
   { path: '/devices', labelKey: 'nav.devices', icon: Router, roles: ['admin','support','technician'] },
-  { path: '/subscriptions', labelKey: 'nav.subscriptions', icon: CreditCard, roles: ['admin','support','technician'] },
-  { path: '/networks', labelKey: 'nav.networks', icon: Wifi, roles: ['admin','support','technician'] },
   { path: '/reports', labelKey: 'nav.reports', icon: BarChart3, roles: ['admin','support'] },
   { path: '/users', labelKey: 'nav.users', icon: UsersIcon, roles: ['admin'] },
   { path: '/settings', labelKey: 'nav.settings', icon: Settings, roles: ['admin','support','technician'] },
@@ -112,8 +110,6 @@ export default function Layout() {
         queryClient.invalidateQueries({ queryKey: ['devices'] })
         queryClient.invalidateQueries({ queryKey: ['devices-map'] })
         queryClient.invalidateQueries({ queryKey: ['map-points'] })
-        queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
-        queryClient.invalidateQueries({ queryKey: ['networks'] })
       }, 60000)
       return () => clearInterval(interval)
     }
