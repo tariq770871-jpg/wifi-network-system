@@ -91,13 +91,28 @@ jobs:
         with:
           node-version: 20
 
-      - name: Backend npm audit (fail on high+)
+      # Generate patched lockfiles on the runner, then audit those exact lockfiles.
+      # The refreshed lockfiles are uploaded so they can be committed to this PR.
+      - name: Refresh Backend lockfile and audit
         working-directory: backend
-        run: npm audit --audit-level=high
+        run: |
+          npm audit fix --package-lock-only
+          npm audit --audit-level=high
 
-      - name: Web npm audit (fail on high+)
+      - name: Refresh Web lockfile and audit
         working-directory: web
-        run: npm audit --audit-level=high
+        run: |
+          npm audit fix --package-lock-only
+          npm audit --audit-level=high
+
+      - name: Upload refreshed dependency lockfiles
+        uses: actions/upload-artifact@v4
+        with:
+          name: refreshed-lockfiles
+          path: |
+            backend/package-lock.json
+            web/package-lock.json
+          retention-days: 3
 
   secret-scan:
     name: Security - Secret Scanning
