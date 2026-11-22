@@ -17,7 +17,7 @@ const authenticate = async (req, res, next) => {
             [decoded.userId]
         );
 
-        if (result.rows.length === 0) {
+        if (result.rows.length === 0 || result.rows[0].is_active === false) {
             return res.status(401).json({ success: false, error: 'المستخدم غير موجود' });
         }
 
