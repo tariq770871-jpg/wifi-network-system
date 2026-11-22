@@ -93,7 +93,7 @@ jobs:
 
       - name: Backend npm audit (fail on high+)
         working-directory: backend
-        run: npm audit --audit-level=high || true
+        run: npm audit --audit-level=high
 
       - name: Web npm audit (fail on high+)
         working-directory: web
