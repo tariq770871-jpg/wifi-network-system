@@ -97,7 +97,7 @@ jobs:
 
       - name: Web npm audit (fail on high+)
         working-directory: web
-        run: npm audit --audit-level=high || true
+        run: npm audit --audit-level=high
 
   secret-scan:
     name: Security - Secret Scanning
