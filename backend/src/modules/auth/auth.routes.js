@@ -1,9 +1,19 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const { body } = require('express-validator');
 const router = express.Router();
 const { register, login, logout, me, changePassword, updateProfile } = require('./auth.controller');
 const { authenticate, authorize } = require('../../shared/middleware/auth');
 const { validateRequest } = require('../../shared/middleware/validate');
+
+// SECURITY: تحديد محاولات تسجيل الدخول لمنع تخمين كلمات المرور
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: { success: false, error: 'محاولات تسجيل دخول كثيرة جداً، حاول بعد 15 دقيقة' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 // SECURITY: التسجيل العام مغلق — إنشاء الحسابات من المدير فقط (صفحة المستخدمين أو POST /users).
 // كان التسجيل مكشوفاً لأي زائر فينشئ حساب فني ويدخل ليرى التتبع والأجهزة والتذاكر.
