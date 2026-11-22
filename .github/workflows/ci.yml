@@ -235,7 +235,7 @@ jobs:
   e2e-tests:
     name: E2E - Playwright (auth + map points)
     runs-on: ubuntu-latest
-    needs: [backend-tests, web-build]
+    needs: [backend-tests, web-build, dependency-audit]
     services:
       postgres:
         image: postgres:16-alpine
