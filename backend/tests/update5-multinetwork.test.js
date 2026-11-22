@@ -4,7 +4,6 @@
  * ربط وإزالة ربط البلاغ بشبكة + حماية الصلاحيات، وفلترة الأجهزة بالشبكة.
  */
 const request = require('supertest');
-const bcrypt = require('bcryptjs');
 const { app } = require('../src/app');
 const { query, pool } = require('../src/shared/db');
 const { createAuthenticatedUser } = require('./helpers/auth');
