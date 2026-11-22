@@ -96,13 +96,13 @@ jobs:
       - name: Refresh Backend lockfile and audit
         working-directory: backend
         run: |
-          npm audit fix --package-lock-only
+          npm audit fix
           npm audit --audit-level=high
 
       - name: Refresh Web lockfile and audit
         working-directory: web
         run: |
-          npm audit fix --package-lock-only
+          npm audit fix
           npm audit --audit-level=high
 
       - name: Upload refreshed dependency lockfiles
@@ -110,7 +110,9 @@ jobs:
         with:
           name: refreshed-lockfiles
           path: |
+            backend/package.json
             backend/package-lock.json
+            web/package.json
             web/package-lock.json
           retention-days: 3
 
