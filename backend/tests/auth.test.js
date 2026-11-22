@@ -95,6 +95,37 @@ describe('Auth API', () => {
             expect(meRes.body.data.username).toBe(created.username);
         });
 
+        test('rejects login for an inactive account', async () => {
+            const bcrypt = require('bcryptjs');
+            const { query } = require('../src/shared/db');
+            const hashedPassword = await bcrypt.hash('secret123', 10);
+            const username = `inactive_user_${Date.now()}`;
+            await query(
+                'INSERT INTO users (username, hashed_password, full_name, role, is_active) VALUES ($1, $2, $3, $4, false)',
+                [username, hashedPassword, 'Inactive Test User', 'technician']
+            );
+
+            const res = await request(app)
+                .post('/api/auth/login')
+                .set('X-Forwarded-For', '203.0.113.20')
+                .send({ username, password: 'secret123' });
+
+            expect(res.status).toBe(401);
+        });
+
+        test('limits repeated login attempts for the same account and IP', async () => {
+            const attempts = [];
+            for (let i = 0; i < 6; i += 1) {
+                attempts.push(request(app)
+                    .post('/api/auth/login')
+                    .set('X-Forwarded-For', '203.0.113.21')
+                    .send({ username: 'rate_limit_test_account', password: 'wrong-password' }));
+            }
+            const responses = await Promise.all(attempts);
+            expect(responses.slice(0, 5).every((res) => res.status === 401)).toBe(true);
+            expect(responses[5].status).toBe(429);
+        });
+
         test('logout clears the auth cookie', async () => {
             const res = await request(app).post('/api/auth/logout');
             expect(res.status).toBe(200);

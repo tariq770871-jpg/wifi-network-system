@@ -11,6 +11,7 @@ const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const swaggerUi = require('swagger-ui-express');
 const config = require('./shared/config');
+const { query } = require('./shared/db');
 const logger = require('./shared/utils/logger');
 const { requestId } = require('./shared/middleware/requestId');
 const { i18n } = require('./shared/i18n');
@@ -73,7 +74,7 @@ const io = new Server(server, {
 
 // SECURITY: مصادقة إلزامية على مصافحة Socket.IO — لا اتصالات مجهولة
 // يقبل: handshake.auth.token أو ترويسة Authorization أو كوكي الجلسة HttpOnly
-io.use((socket, next) => {
+io.use(async (socket, next) => {
   try {
     const bearer = (socket.handshake.headers?.authorization || '').replace(/^Bearer\s+/i, '');
     let cookieToken = null;
@@ -85,7 +86,14 @@ io.use((socket, next) => {
     const token = socket.handshake.auth?.token || bearer || cookieToken;
     if (!token) return next(new Error('unauthorized'));
     const payload = jwt.verify(token, config.jwt.secret);
-    socket.data.user = { userId: payload.userId, username: payload.username, role: payload.role };
+    const result = await query(
+      'SELECT id, username, role, is_active FROM users WHERE id = $1',
+      [payload.userId]
+    );
+    const user = result.rows[0];
+    if (!user || user.is_active === false) return next(new Error('unauthorized'));
+    // بيانات الدور والاسم من قاعدة البيانات حتى لا تستمر صلاحيات قديمة داخل JWT
+    socket.data.user = { userId: user.id, username: user.username, role: user.role };
     next();
   } catch {
     next(new Error('unauthorized'));
@@ -157,7 +165,6 @@ app.use(morgan(':id :method :url :status :res[content-length] - :response-time m
 }));
 
 // Health check: يتضمن فحص قاعدة البيانات
-const { query } = require('./shared/db');
 app.get('/health', async (req, res) => {
     let db = 'ok';
     try {

@@ -29,7 +29,7 @@ class AuthService {
      */
     static async login({ username, password }) {
         const result = await query(
-            'SELECT id, username, full_name, role, hashed_password, tracking_enabled, tracking_veto FROM users WHERE username = $1',
+            'SELECT id, username, full_name, role, hashed_password, tracking_enabled, tracking_veto, is_active FROM users WHERE username = $1',
             [username]
         );
 
@@ -40,7 +40,7 @@ class AuthService {
         const user = result.rows[0];
         const validPassword = await bcrypt.compare(password, user.hashed_password);
 
-        if (!validPassword) {
+        if (!validPassword || user.is_active === false) {
             throw { statusCode: 401, messageKey: 'INVALID_CREDENTIALS', message: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
         }
 

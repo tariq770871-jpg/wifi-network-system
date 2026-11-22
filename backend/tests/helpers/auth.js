@@ -13,6 +13,14 @@ const bcrypt = require('bcryptjs');
 const { app } = require('../../src/app');
 const { query } = require('../../src/shared/db');
 
+// كل مستخدم اختبار يحاكي عنوان IP مستقلاً حتى لا تتداخل حدود المعدل بين الاختبارات.
+let testIpCounter = 1;
+function nextTestIp() {
+    const ip = `198.51.100.${testIpCounter}`;
+    testIpCounter = testIpCounter >= 254 ? 1 : testIpCounter + 1;
+    return ip;
+}
+
 /**
  * إنشاء مستخدم بأي دور بإدراج مباشر في قاعدة البيانات ثم تسجيل دخول API
  * @returns {{token: string, username: string, id: number}}
@@ -31,6 +39,7 @@ async function createAuthenticatedUser({ role = 'technician', prefix = 'tuser' }
 
     const login = await request(app)
         .post('/api/auth/login')
+        .set('X-Forwarded-For', nextTestIp())
         .send({ username, password: 'secret123' });
 
     if (login.status !== 200) {

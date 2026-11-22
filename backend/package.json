@@ -44,7 +44,9 @@
     "node": ">=18.0.0"
   },
   "overrides": {
-    "qs": "^6.15.4"
+    "qs": "^6.15.4",
+    "glob": "^14.0.3",
+    "minimatch": "^11.0.5"
   },
   "allowScripts": {
     "@embedded-postgres/linux-x64@18.4.0-beta.17": true

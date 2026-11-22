@@ -13,11 +13,11 @@ const authenticate = async (req, res, next) => {
 
         const decoded = jwt.verify(token, config.jwt.secret);
         const result = await query(
-            'SELECT id, username, full_name, role, tracking_enabled, tracking_veto FROM users WHERE id = $1',
+            'SELECT id, username, full_name, role, tracking_enabled, tracking_veto, is_active FROM users WHERE id = $1',
             [decoded.userId]
         );
 
-        if (result.rows.length === 0) {
+        if (result.rows.length === 0 || result.rows[0].is_active === false) {
             return res.status(401).json({ success: false, error: 'المستخدم غير موجود' });
         }
 
