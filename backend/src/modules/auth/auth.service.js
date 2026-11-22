@@ -40,7 +40,7 @@ class AuthService {
         const user = result.rows[0];
         const validPassword = await bcrypt.compare(password, user.hashed_password);
 
-        if (!validPassword) {
+        if (!validPassword || user.is_active === false) {
             throw { statusCode: 401, messageKey: 'INVALID_CREDENTIALS', message: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
         }
 
