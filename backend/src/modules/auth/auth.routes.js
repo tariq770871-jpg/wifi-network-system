@@ -34,6 +34,7 @@ router.post('/register',
 );
 
 router.post('/login',
+    loginLimiter,
     [
         body('username').trim().notEmpty().withMessage('اسم المستخدم مطلوب'),
         body('password').notEmpty().withMessage('كلمة المرور مطلوبة'),
