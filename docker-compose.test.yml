@@ -1,0 +1,30 @@
+# حزمة اختبار متكاملة بأمر واحد
+# ---------------------------------
+# التشغيل:  docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from tests
+# تشغّل PostgreSQL + الترحيلات + حزمة الاختبارات كاملة ثم تخرج بكود النجاح/الفشل.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: wifi
+      POSTGRES_PASSWORD: wifi_test
+      POSTGRES_DB: wifi_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wifi -d wifi_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  tests:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    environment:
+      DATABASE_URL: postgres://wifi:wifi_test@db:5432/wifi_test
+      JWT_SECRET: test_secret_docker_stack_only
+      NODE_ENV: test
+    command: sh -c "npm ci --include=dev && npm run migrate && npm test"
+    depends_on:
+      db:
+        condition: service_healthy

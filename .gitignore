@@ -1,0 +1,47 @@
+# ===== WiFi Network Management System =====
+
+# التبعيات
+node_modules/
+
+# البيئة — لا ترفع ملف .env الحقيقي أبداً (يحتوي كلمات المرور والمفاتيح!)
+.env
+.env.*
+!.env.example
+
+# بيانات قواعد البيانات المحلية
+.pgdata/
+*.sqlite
+*.db
+
+# مخرجات البناء
+dist/
+build/
+coverage/
+
+# سجلات
+*.log
+logs/
+dev.log
+
+# ملفات تنفيذية وأرشيفات (أدوات محمّلة مثل cloudflared/ngrok لا تنتمي للمستودع)
+*.exe
+*.msi
+*.zip
+*.rar
+*.7z
+
+# Flutter / Android
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+android/android/.gradle/
+android/android/local.properties
+android/android/app/build/
+android/android/build/
+*.iml
+.idea/
+
+# نظام التشغيل
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,7 @@
+tests/
+coverage/
+Dockerfile
+.dockerignore
+.env
+.env.*
+*.md

@@ -1,0 +1,27 @@
+{
+  "name": "WiFi Network Management System",
+  "short_name": "WiFi إدارة",
+  "description": "نظام إدارة شبكات WiFi المتكامل: بلاغات، تتبع، مسح إشارة، خريطة حرارية",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#1976D2",
+  "background_color": "#F8FAFC",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

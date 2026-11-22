@@ -1,0 +1,62 @@
+# WiFi Network Management System - Full Stack
+# التشغيل: docker compose up -d --build
+# الواجهة: http://localhost:8080 | الـ API: http://localhost:3000 | Swagger: http://localhost:3000/api-docs
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: wifi_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wifi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wifipass}
+      POSTGRES_DB: ${POSTGRES_DB:-wifi_network}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wifi} -d ${POSTGRES_DB:-wifi_network}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - wifinet
+
+  api:
+    build: ./backend
+    container_name: wifi_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wifi}:${POSTGRES_PASSWORD:-wifipass}@db:5432/${POSTGRES_DB:-wifi_network}
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-a-strong-random-secret-at-least-32-chars}
+      MIKROTIK_ENCRYPTION_KEY: ${MIKROTIK_ENCRYPTION_KEY:-change-this-mikrotik-key}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}
+    ports:
+      - "3000:3000"
+    networks:
+      - wifinet
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    container_name: wifi_web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    networks:
+      - wifinet
+
+volumes:
+  pgdata:
+
+networks:
+  wifinet:
+    driver: bridge

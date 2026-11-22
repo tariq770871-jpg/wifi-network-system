@@ -1,0 +1,17 @@
+# التبعيات
+node_modules/
+
+# مخرجات البناء
+dist/
+coverage/
+test-results/
+
+# البيئة — لا ترفع ملف .env الحقيقي أبداً
+.env
+.env.*
+!.env.example
+
+# ملفات مؤقتة
+*.log
+.DS_Store
+.vercel
