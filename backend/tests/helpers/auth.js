@@ -39,6 +39,7 @@ async function createAuthenticatedUser({ role = 'technician', prefix = 'tuser' }
 
     const login = await request(app)
         .post('/api/auth/login')
+        .set('X-Forwarded-For', nextTestIp())
         .send({ username, password: 'secret123' });
 
     if (login.status !== 200) {
