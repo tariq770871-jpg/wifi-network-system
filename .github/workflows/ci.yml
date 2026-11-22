@@ -96,13 +96,13 @@ jobs:
       - name: Refresh Backend lockfile and audit
         working-directory: backend
         run: |
-          npm audit fix
+          npm audit fix --audit-level=high
           npm audit --audit-level=high
 
       - name: Refresh Web lockfile and audit
         working-directory: web
         run: |
-          npm audit fix
+          npm audit fix --audit-level=high
           npm audit --audit-level=high
 
       - name: Upload refreshed dependency lockfiles
