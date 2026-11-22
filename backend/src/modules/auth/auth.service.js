@@ -29,7 +29,7 @@ class AuthService {
      */
     static async login({ username, password }) {
         const result = await query(
-            'SELECT id, username, full_name, role, hashed_password, tracking_enabled, tracking_veto FROM users WHERE username = $1',
+            'SELECT id, username, full_name, role, hashed_password, tracking_enabled, tracking_veto, is_active FROM users WHERE username = $1',
             [username]
         );
 
