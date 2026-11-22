@@ -13,6 +13,14 @@ const bcrypt = require('bcryptjs');
 const { app } = require('../../src/app');
 const { query } = require('../../src/shared/db');
 
+// كل مستخدم اختبار يحاكي عنوان IP مستقلاً حتى لا تتداخل حدود المعدل بين الاختبارات.
+let testIpCounter = 1;
+function nextTestIp() {
+    const ip = `198.51.100.${testIpCounter}`;
+    testIpCounter = testIpCounter >= 254 ? 1 : testIpCounter + 1;
+    return ip;
+}
+
 /**
  * إنشاء مستخدم بأي دور بإدراج مباشر في قاعدة البيانات ثم تسجيل دخول API
  * @returns {{token: string, username: string, id: number}}
